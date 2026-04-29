@@ -602,36 +602,61 @@
         }
         
         function drawTail(cx, cy, imgSize) {
-            const time = Date.now() * 0.006;
-            const tailWag = Math.sin(time) * 4;
-            const tailCurve = Math.cos(time * 0.7) * 3;
-            
-            // 尾巴颜色匹配小猫毛色
-            ctx.strokeStyle = '#D4B896';
-            ctx.lineWidth = 3.5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
+            const time = Date.now() * 0.005;
             
             // 尾巴根部（身后偏下）
-            const startX = cx - cat.facing * (imgSize * 0.35);
-            const startY = cy + imgSize * 0.25;
+            const startX = cx - cat.facing * (imgSize * 0.32);
+            const startY = cy + imgSize * 0.22;
             
-            // 尾巴尖端
-            const endX = startX - cat.facing * (12 + tailWag);
-            const endY = startY + 18 + tailCurve;
+            // 尾巴分成4段，每段不同摆动相位
+            // 根部摆动小，尖端摆动大，形成S形
+            const segments = 4;
+            const segLen = 7;
+            let points = [{x: startX, y: startY}];
             
-            // 控制点（让尾巴有曲线）
-            const cpX = startX - cat.facing * (6 + tailWag * 0.5);
-            const cpY = startY + 8;
+            for (let i = 1; i <= segments; i++) {
+                const t = time + i * 0.8;
+                // 左右摆动幅度随段数增加
+                const wagAmp = i * 2.5;
+                const wag = Math.sin(t) * wagAmp;
+                // 根部基本向下，尖端有更多侧摆
+                const prev = points[i - 1];
+                points.push({
+                    x: prev.x - cat.facing * (wag * 0.3) + Math.cos(t * 0.5) * 1.5,
+                    y: prev.y + segLen + Math.sin(t * 0.3) * 1
+                });
+            }
             
-            ctx.moveTo(startX, startY);
-            ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+            // 用贝塞尔曲线平滑连接各段
+            ctx.strokeStyle = '#D4B896';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length - 1; i++) {
+                const midX = (points[i].x + points[i + 1].x) / 2;
+                const midY = (points[i].y + points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
+            }
+            // 最后一段到尖端
+            const last = points[points.length - 1];
+            ctx.quadraticCurveTo(
+                (points[points.length - 2].x + last.x) / 2,
+                (points[points.length - 2].y + last.y) / 2,
+                last.x, last.y
+            );
             ctx.stroke();
             
-            // 尾巴尖端小白毛
+            // 尾巴尖端小白毛（蓬松感）
             ctx.fillStyle = '#F5E6D3';
             ctx.beginPath();
-            ctx.arc(endX, endY, 2, 0, Math.PI * 2);
+            ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#E8D5C0';
+            ctx.beginPath();
+            ctx.arc(last.x - 1, last.y - 1, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         

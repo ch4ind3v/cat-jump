@@ -438,7 +438,7 @@
         window.addEventListener('resize', resizeCanvas);
         
         // ===== 版本检测（解决 GitHub Pages CDN 缓存问题）=====
-        const APP_VERSION = '7';
+        const APP_VERSION = '8';
         const storedVersion = localStorage.getItem('catJumpVersion');
         
         function forceRefresh() {
@@ -1196,8 +1196,10 @@
             const scaleX = cat.facing * (1 + squash);
             const scaleY = 1 - squash + breathe;
             
-            // 尾巴摇摆（在画身体之前画，这样尾巴在身体后面）
-            drawTail(cx, cy + 5, imgSize);
+            // 尾巴摇摆（仅明治有尾巴）
+            if (selectedCharacter !== 'bibi') {
+                drawTail(cx, cy + 5, imgSize);
+            }
             
             ctx.translate(cx, cy);
             ctx.scale(scaleX, scaleY);

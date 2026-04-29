@@ -550,8 +550,8 @@
             if (gameState !== 'playing') return;
             
             // 水平移动 - 优先重力感应，其次键盘，最后触摸
-            if (useTilt && Math.abs(tiltGamma) > 3) {
-                const sensitivity = cat.speed / 25;
+            if (useTilt && Math.abs(tiltGamma) > 1.5) {
+                const sensitivity = cat.speed / 15;
                 cat.vx = tiltGamma * sensitivity;
                 cat.vx = Math.max(-cat.speed, Math.min(cat.speed, cat.vx));
                 cat.facing = tiltGamma > 0 ? 1 : -1;
@@ -663,10 +663,19 @@
             tiltGamma = event.gamma || 0;
         }
         
+        function handleMotion(event) {
+            const accel = event.accelerationIncludingGravity;
+            if (accel && accel.x !== null) {
+                // x轴加速度对应左右倾斜，范围约 -10 ~ 10
+                tiltGamma = accel.x * 3;
+            }
+        }
+        
         function requestTiltPermission() {
             if (tiltRequested) return;
             tiltRequested = true;
             
+            // iOS 13+ 需要请求权限
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(response => {
@@ -675,10 +684,27 @@
                             window.addEventListener('deviceorientation', handleOrientation);
                         }
                     })
-                    .catch(() => {});
-            } else {
+                    .catch(() => {
+                        // iOS 权限被拒绝，尝试 devicemotion
+                        tryMotion();
+                    });
+            } else if (typeof DeviceOrientationEvent !== 'undefined') {
+                // Android 等支持 deviceorientation 的设备
                 useTilt = true;
                 window.addEventListener('deviceorientation', handleOrientation);
+                // 同时监听 devicemotion 作为增强
+                tryMotion();
+            } else if (typeof DeviceMotionEvent !== 'undefined') {
+                // 不支持 deviceorientation 但支持 devicemotion
+                tryMotion();
+            }
+            // 桌面浏览器：都不支持，useTilt 保持 false，回退到触摸
+        }
+        
+        function tryMotion() {
+            if (typeof DeviceMotionEvent !== 'undefined') {
+                useTilt = true;
+                window.addEventListener('devicemotion', handleMotion);
             }
         }
         

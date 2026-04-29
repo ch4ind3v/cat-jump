@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>这有山 - 明治跳跳</title>
+    <title>超级明治跳 - Doodle Jump</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
         
@@ -244,8 +244,8 @@
     </div>
     
     <div id="start-screen">
-        <h1>🐱 这有山</h1>
-        <p>帮明治跳得更高！</p>
+        <h1>🐱 超级明治跳</h1>
+        <p>帮助明治跳得更高！</p>
         <div id="challenge-banner" class="challenge-banner hidden"></div>
         <input type="text" id="player-name" class="name-input" placeholder="输入你的名字" maxlength="8">
         <button class="btn" onclick="startGame()">开始游戏</button>
@@ -348,8 +348,8 @@
             
             if (navigator.share) {
                 navigator.share({
-                    title: '这有山 - 明治跳跳挑战',
-                    text: `${name} 在这有山得了 ${score} 分！你能超过他吗？`,
+                    title: '超级明治跳挑战',
+                    text: `${name} 在超级明治跳中得了 ${score} 分！你能超过他吗？`,
                     url: shareUrl
                 }).catch(() => {});
             } else if (navigator.clipboard) {
@@ -910,6 +910,70 @@
             }
         }
         
+        function drawSignboard() {
+            // 招牌挂在墙上，随相机缓慢移动
+            const signY = canvas.height * 0.12 + cameraY * 0.02;
+            const signX = canvas.width * 0.5;
+            const signW = 140;
+            const signH = 50;
+            
+            // 挂绳
+            ctx.strokeStyle = '#5a4a3a';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(signX - signW * 0.3, signY - 20);
+            ctx.lineTo(signX - signW * 0.3, signY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(signX + signW * 0.3, signY - 20);
+            ctx.lineTo(signX + signW * 0.3, signY);
+            ctx.stroke();
+            
+            // 招牌板阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            roundRect(ctx, signX - signW/2 + 2, signY + 2, signW, signH, 6);
+            ctx.fill();
+            
+            // 招牌板（深色木质）
+            ctx.fillStyle = '#3d2010';
+            roundRect(ctx, signX - signW/2, signY, signW, signH, 6);
+            ctx.fill();
+            
+            // 招牌边框（金色）
+            ctx.strokeStyle = '#B8860B';
+            ctx.lineWidth = 2;
+            roundRect(ctx, signX - signW/2 + 3, signY + 3, signW - 6, signH - 6, 4);
+            ctx.stroke();
+            
+            // 文字 "这有山"
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 22px "Nunito", "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('这有山', signX, signY + signH/2);
+            
+            // 左右两盏小灯
+            const lampY = signY + signH + 8;
+            [-1, 1].forEach(dir => {
+                const lx = signX + dir * (signW/2 + 15);
+                // 灯罩
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.arc(lx, lampY, 6, 0, Math.PI * 2);
+                ctx.fill();
+                // 灯光
+                ctx.fillStyle = 'rgba(255, 200, 80, 0.6)';
+                ctx.beginPath();
+                ctx.arc(lx, lampY, 10, 0, Math.PI * 2);
+                ctx.fill();
+                // 光晕
+                ctx.fillStyle = 'rgba(255, 200, 80, 0.1)';
+                ctx.beginPath();
+                ctx.arc(lx, lampY, 20, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
         function draw() {
             // 深夜小酒馆背景
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -939,6 +1003,9 @@
             ctx.moveTo(0, wainscotY + cameraY * 0.03);
             ctx.lineTo(canvas.width, wainscotY + cameraY * 0.03);
             ctx.stroke();
+            
+            // 酒馆招牌 "这有山"
+            drawSignboard();
             
             drawStars();
             drawClouds();

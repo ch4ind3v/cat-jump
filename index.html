@@ -13,7 +13,7 @@
             box-sizing: border-box;
         }
         body {
-            background: linear-gradient(to bottom, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            background: #0d0603;
             overflow: hidden;
             font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none;
@@ -469,13 +469,24 @@
         
         function initClouds() {
             clouds = [];
-            for (let i = 0; i < 15; i++) {
+            // 月亮
+            clouds.push({
+                x: canvas.width * 0.75,
+                y: canvas.height * 0.15,
+                width: 80,
+                speed: 0.02,
+                opacity: 0.6,
+                type: 'moon'
+            });
+            // 远处城市灯光
+            for (let i = 0; i < 12; i++) {
                 clouds.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height * 3,
-                    width: 60 + Math.random() * 100,
-                    speed: 0.1 + Math.random() * 0.4,
-                    opacity: 0.1 + Math.random() * 0.3
+                    width: 30 + Math.random() * 50,
+                    speed: 0.05 + Math.random() * 0.1,
+                    opacity: 0.1 + Math.random() * 0.2,
+                    type: 'citylight'
                 });
             }
         }
@@ -584,53 +595,87 @@
             if (screenY < -50 || screenY > canvas.height + 50) return;
             
             ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.25)';
-            ctx.shadowBlur = 8;
-            ctx.shadowOffsetY = 4;
             const r = 6;
             
             if (p.type === 'normal') {
-                roundRect(ctx, p.x, screenY, p.width, p.height, r);
-                ctx.fillStyle = '#228B22';
+                // 木质圆桌/酒桶平台
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 4;
+                
+                // 桌面厚度（深色木边）
+                roundRect(ctx, p.x, screenY + 2, p.width, p.height, r);
+                ctx.fillStyle = '#3d1f0a';
                 ctx.fill();
                 
-                roundRect(ctx, p.x, screenY, p.width, p.height * 0.55, {tl: r, tr: r, bl: 0, br: 0});
-                ctx.fillStyle = '#7CFC00';
+                // 桌面（暖木色）
+                roundRect(ctx, p.x, screenY, p.width, p.height * 0.7, {tl: r, tr: r, bl: r, br: r});
+                ctx.fillStyle = '#8B5A2B';
                 ctx.fill();
                 
-                roundRect(ctx, p.x, screenY + p.height * 0.5, p.width, p.height * 0.5, {tl: 0, tr: 0, bl: r, br: r});
-                ctx.fillStyle = '#8B4513';
-                ctx.fill();
+                // 木纹高光
+                ctx.fillStyle = '#A06B35';
+                ctx.fillRect(p.x + 4, screenY + 2, p.width - 8, 2);
+                ctx.fillRect(p.x + 8, screenY + 5, p.width - 16, 1);
                 
-                ctx.fillStyle = '#ADFF2F';
-                ctx.fillRect(p.x + 4, screenY + 1, p.width - 8, 2);
+                // 桌腿阴影
+                ctx.shadowColor = 'transparent';
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(p.x + 10, screenY + p.height * 0.7, 4, 6);
+                ctx.fillRect(p.x + p.width - 14, screenY + p.height * 0.7, 4, 6);
+                
             } else if (p.type === 'moving') {
-                roundRect(ctx, p.x, screenY, p.width, p.height, r);
-                ctx.fillStyle = '#1E90FF';
+                // 吊灯平台
+                ctx.shadowColor = 'rgba(255,200,80,0.3)';
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetY = 0;
+                
+                // 灯罩
+                roundRect(ctx, p.x + 8, screenY, p.width - 16, p.height * 0.6, {tl: 4, tr: 4, bl: 2, br: 2});
+                ctx.fillStyle = '#D4A843';
                 ctx.fill();
                 
-                roundRect(ctx, p.x + 2, screenY + 2, p.width - 4, p.height * 0.5, {tl: r-2, tr: r-2, bl: 0, br: 0});
-                ctx.fillStyle = '#87CEFA';
+                // 灯泡发光
+                ctx.fillStyle = '#FFE4A0';
+                ctx.beginPath();
+                ctx.arc(p.x + p.width/2, screenY + p.height * 0.5, 5, 0, Math.PI * 2);
                 ctx.fill();
                 
+                // 光晕
                 ctx.shadowColor = 'transparent';
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 11px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('↔', p.x + p.width/2, screenY + 10);
-            } else if (p.type === 'fragile') {
-                roundRect(ctx, p.x, screenY, p.width, p.height, r);
-                ctx.fillStyle = '#CD853F';
+                ctx.fillStyle = 'rgba(255,228,160,0.15)';
+                ctx.beginPath();
+                ctx.arc(p.x + p.width/2, screenY + p.height * 0.5, 18, 0, Math.PI * 2);
                 ctx.fill();
                 
-                ctx.shadowColor = 'transparent';
-                ctx.strokeStyle = '#8B4513';
+                // 吊线
+                ctx.strokeStyle = '#5a4a3a';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.moveTo(p.x + 12, screenY + 2);
-                ctx.lineTo(p.x + 22, screenY + 7);
-                ctx.lineTo(p.x + 32, screenY + 3);
+                ctx.moveTo(p.x + p.width/2, screenY - 8);
+                ctx.lineTo(p.x + p.width/2, screenY);
                 ctx.stroke();
+                
+            } else if (p.type === 'fragile') {
+                // 高脚杯/酒瓶平台
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 6;
+                ctx.shadowOffsetY = 2;
+                
+                // 杯身
+                roundRect(ctx, p.x + 10, screenY, p.width - 20, p.height, {tl: 3, tr: 3, bl: 3, br: 3});
+                ctx.fillStyle = '#6B8E6B';
+                ctx.fill();
+                
+                // 液体（酒）
+                roundRect(ctx, p.x + 12, screenY + 3, p.width - 24, p.height * 0.5, {tl: 2, tr: 2, bl: 0, br: 0});
+                ctx.fillStyle = '#8B2323';
+                ctx.fill();
+                
+                // 杯底
+                ctx.shadowColor = 'transparent';
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.fillRect(p.x + 10, screenY + p.height - 2, p.width - 20, 2);
             }
             
             ctx.restore();
@@ -660,17 +705,29 @@
         }
         
         function drawClouds() {
+            // 窗外夜景元素 - 月亮和远处的城市灯光
             clouds.forEach(c => {
                 const screenY = c.y + cameraY * 0.2;
                 if (screenY < -120 || screenY > canvas.height + 120) return;
                 
-                ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity})`;
-                ctx.beginPath();
-                ctx.arc(c.x, screenY, c.width * 0.25, 0, Math.PI * 2);
-                ctx.arc(c.x + c.width * 0.25, screenY - c.width * 0.12, c.width * 0.3, 0, Math.PI * 2);
-                ctx.arc(c.x + c.width * 0.5, screenY, c.width * 0.25, 0, Math.PI * 2);
-                ctx.arc(c.x + c.width * 0.35, screenY + c.width * 0.08, c.width * 0.2, 0, Math.PI * 2);
-                ctx.fill();
+                if (c.type === 'moon') {
+                    // 月亮
+                    ctx.fillStyle = `rgba(255, 240, 200, ${c.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(c.x, screenY, c.width * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    // 月光晕
+                    ctx.fillStyle = `rgba(255, 240, 200, ${c.opacity * 0.1})`;
+                    ctx.beginPath();
+                    ctx.arc(c.x, screenY, c.width * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 远处建筑灯光
+                    ctx.fillStyle = `rgba(200, 180, 140, ${c.opacity * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(c.x, screenY, c.width * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             });
         }
         
@@ -854,12 +911,34 @@
         }
         
         function draw() {
+            // 深夜小酒馆背景
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#0f0c29');
-            gradient.addColorStop(0.5, '#302b63');
-            gradient.addColorStop(1, '#24243e');
+            gradient.addColorStop(0, '#0d0603');      // 天花板：深棕黑
+            gradient.addColorStop(0.35, '#1a0d08');   // 墙壁上半
+            gradient.addColorStop(0.65, '#241308');   // 墙壁下半
+            gradient.addColorStop(1, '#0f0805');      // 地板
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 木地板线条（横向木纹）
+            ctx.strokeStyle = 'rgba(60, 35, 20, 0.3)';
+            ctx.lineWidth = 1;
+            const floorStart = canvas.height * 0.7;
+            for (let y = floorStart; y < canvas.height; y += 12) {
+                ctx.beginPath();
+                ctx.moveTo(0, y + cameraY * 0.05);
+                ctx.lineTo(canvas.width, y + cameraY * 0.05);
+                ctx.stroke();
+            }
+            
+            // 墙壁装饰线
+            ctx.strokeStyle = 'rgba(120, 80, 40, 0.2)';
+            ctx.lineWidth = 2;
+            const wainscotY = canvas.height * 0.4;
+            ctx.beginPath();
+            ctx.moveTo(0, wainscotY + cameraY * 0.03);
+            ctx.lineTo(canvas.width, wainscotY + cameraY * 0.03);
+            ctx.stroke();
             
             drawStars();
             drawClouds();

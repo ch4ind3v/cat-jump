@@ -235,6 +235,117 @@
             display: flex;
             gap: 12px;
             margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .revive-btn {
+            padding: 14px 32px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 900;
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(255,107,107,0.5), 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            font-family: 'Nunito', sans-serif;
+            letter-spacing: 1px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .revive-btn:hover {
+            transform: translateY(-3px) scale(1.06);
+            box-shadow: 0 8px 25px rgba(255,107,107,0.6), 0 3px 8px rgba(0,0,0,0.25);
+        }
+        .revive-btn:active {
+            transform: translateY(1px) scale(0.97);
+        }
+        .revive-btn .price {
+            font-size: 13px;
+            opacity: 0.9;
+            display: block;
+            margin-top: 2px;
+        }
+        #payment-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(12px);
+            z-index: 20;
+            transition: opacity 0.3s;
+        }
+        .payment-box {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid rgba(255,215,0,0.3);
+            border-radius: 24px;
+            padding: 32px 28px;
+            text-align: center;
+            max-width: 320px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .payment-box h3 {
+            font-size: 24px;
+            color: #FFD700;
+            margin-bottom: 8px;
+            font-weight: 900;
+        }
+        .payment-box p {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .payment-box .cat-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        .pay-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            font-size: 16px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 900;
+            font-family: 'Nunito', sans-serif;
+            transition: all 0.2s;
+        }
+        .pay-btn-primary {
+            background: linear-gradient(135deg, #FFD700, #FF8C00);
+            color: #1a1a2e;
+            box-shadow: 0 4px 15px rgba(255,140,0,0.4);
+        }
+        .pay-btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        .pay-btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+        }
+        .pay-btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        .qr-code {
+            width: 160px;
+            height: 160px;
+            background: #fff;
+            border-radius: 12px;
+            margin: 12px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #333;
         }
     </style>
 </head>
@@ -264,8 +375,24 @@
         <p id="final-high">最高: 0</p>
         <div id="leaderboard" class="leaderboard"></div>
         <div class="btn-row">
+            <button class="revive-btn" onclick="showPaymentModal()">
+                💎 复活明治
+                <span class="price">¥1.00</span>
+            </button>
             <button class="btn" onclick="restartGame()">再玩一次</button>
             <button class="share-btn" onclick="shareChallenge()">📤 分享挑战</button>
+        </div>
+    </div>
+    
+    <!-- 支付弹窗 -->
+    <div id="payment-modal" class="hidden">
+        <div class="payment-box">
+            <div class="cat-icon">🐱✨</div>
+            <h3>复活明治</h3>
+            <p>支付 ¥1.00，让明治原地满血复活，继续挑战高分！</p>
+            <button class="pay-btn pay-btn-primary" onclick="processPayment()">💳 立即支付 ¥1.00</button>
+            <button class="pay-btn pay-btn-secondary" onclick="hidePaymentModal()">取消</button>
+            <p style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;">支付由 Stripe 安全处理</p>
         </div>
     </div>
 
@@ -892,10 +1019,20 @@
                 
                 const alpha = p.life / 30;
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y + cameraY, p.size, 0, Math.PI * 2);
-                ctx.fill();
+                
+                if (p.isText) {
+                    // 文字粒子（复活特效）
+                    ctx.fillStyle = p.color;
+                    ctx.font = 'bold 18px "Nunito", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(p.text, p.x, p.y + cameraY);
+                } else {
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y + cameraY, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
                 ctx.globalAlpha = 1;
             });
         }
@@ -1306,7 +1443,99 @@
             document.getElementById('game-over-screen').classList.remove('hidden');
         }
         
+        // ===== 付费复活系统 =====
+        // 支付配置（用户可以修改为自己的支付链接）
+        const PAYMENT_CONFIG = {
+            enabled: true,
+            price: '¥1.00',
+            // Stripe Payment Link（可选）
+            stripeLink: '',
+            // PayPal 链接（可选）
+            paypalLink: '',
+            // 自定义支付链接（可选）
+            customLink: ''
+        };
+        
+        let hasRevivedThisGame = false;
+        
+        function showPaymentModal() {
+            if (hasRevivedThisGame) {
+                alert('每局只能复活一次哦！');
+                return;
+            }
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+        
+        function hidePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+        }
+        
+        function processPayment() {
+            // 模拟支付成功（实际使用时替换为真实支付）
+            // 如果有配置 Stripe/PayPal 链接，打开链接
+            if (PAYMENT_CONFIG.stripeLink) {
+                window.open(PAYMENT_CONFIG.stripeLink, '_blank');
+                // Stripe 支付成功后通常会跳转回指定 URL
+                // 这里简化为直接复活（实际应该等支付回调）
+            } else if (PAYMENT_CONFIG.paypalLink) {
+                window.open(PAYMENT_CONFIG.paypalLink, '_blank');
+            } else if (PAYMENT_CONFIG.customLink) {
+                window.open(PAYMENT_CONFIG.customLink, '_blank');
+            }
+            
+            // 模拟：直接复活（演示用）
+            // 实际生产环境应该通过支付回调触发复活
+            hidePaymentModal();
+            reviveCat();
+        }
+        
+        function reviveCat() {
+            if (hasRevivedThisGame) return;
+            hasRevivedThisGame = true;
+            
+            // 隐藏游戏结束界面
+            document.getElementById('game-over-screen').classList.add('hidden');
+            
+            // 明治复活：在当前位置上方，给一个向上的速度
+            cat.y = cat.y - 80;
+            cat.vy = cat.jumpPower * 1.2; // 复活跳得更高一点
+            cat.vx = 0;
+            
+            // 复活特效：金色光环
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: cat.x + cat.width/2 + (Math.random() - 0.5) * 60,
+                    y: cat.y + cat.height/2 + (Math.random() - 0.5) * 60,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 30 + Math.random() * 20,
+                    color: Math.random() > 0.5 ? '#FFD700' : '#FF8C00',
+                    size: 3 + Math.random() * 4
+                });
+            }
+            
+            // 复活文字飘出
+            particles.push({
+                x: cat.x + cat.width/2,
+                y: cat.y - 20,
+                vx: 0,
+                vy: -2,
+                life: 40,
+                color: '#FFD700',
+                size: 0, // 特殊标记，在 drawParticles 中处理为文字
+                isText: true,
+                text: '复活！'
+            });
+            
+            // 游戏状态恢复
+            gameState = 'playing';
+            
+            // 添加复活标记到分数显示
+            document.getElementById('score').textContent = score + ' 👑';
+        }
+        
         function restartGame() {
+            hasRevivedThisGame = false;
             startGame();
         }
         

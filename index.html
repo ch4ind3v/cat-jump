@@ -265,6 +265,35 @@
         #mute-btn:active {
             transform: scale(0.95);
         }
+        #update-notice {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #FF6B35, #FF8C00);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            z-index: 30;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255,107,53,0.4);
+            animation: float 2s ease-in-out infinite;
+            display: none;
+        }
+        #update-notice:hover {
+            transform: translateX(-50%) scale(1.05);
+        }
+        .version-tag {
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.25);
+            z-index: 5;
+            pointer-events: none;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -276,7 +305,9 @@
         <div id="score">0</div>
         <div id="high-score">最高: 0</div>
     </div>
+    <div id="update-notice" onclick="forceRefresh()">🔄 发现新版本，点击刷新</div>
     <button id="mute-btn" onclick="toggleSound()">🔊</button>
+    <div class="version-tag" id="version-tag"></div>
     
     <div id="start-screen">
         <h1>🚀 明治太空跳</h1>
@@ -339,6 +370,26 @@
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
+        
+        // ===== 版本检测（解决 GitHub Pages CDN 缓存问题）=====
+        const APP_VERSION = '6';
+        const storedVersion = localStorage.getItem('catJumpVersion');
+        
+        function forceRefresh() {
+            localStorage.setItem('catJumpVersion', APP_VERSION);
+            window.location.reload(true);
+        }
+        
+        if (storedVersion && storedVersion !== APP_VERSION) {
+            // 用户加载的是缓存的旧版本，显示刷新提示
+            const notice = document.getElementById('update-notice');
+            if (notice) notice.style.display = 'block';
+        }
+        localStorage.setItem('catJumpVersion', APP_VERSION);
+        
+        // 显示版本号
+        const versionTag = document.getElementById('version-tag');
+        if (versionTag) versionTag.textContent = 'v' + APP_VERSION;
         
         let gameState = 'menu';
         let score = 0;

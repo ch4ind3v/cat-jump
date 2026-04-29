@@ -282,7 +282,7 @@
         
         function generatePlatforms() {
             const topPlatform = platforms[platforms.length - 1];
-            while (topPlatform.y + cameraY > -PLATFORM_GAP_MAX) {
+            while (topPlatform.y + cameraY > -canvas.height) {
                 const newY = topPlatform.y - PLATFORM_GAP_MIN - Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
                 platforms.push(createPlatform(newY));
                 
@@ -574,8 +574,10 @@
                 cat.x = -cat.width;
             }
             
-            const targetCameraY = Math.min(cameraY, canvas.height / 2 - cat.y);
-            if (targetCameraY < cameraY) {
+            // 相机跟随 - 保持小猫在屏幕偏下方（约60%处）
+            const threshold = canvas.height * 0.6;
+            const targetCameraY = threshold - cat.y;
+            if (targetCameraY > cameraY) {
                 cameraY = targetCameraY;
             }
             

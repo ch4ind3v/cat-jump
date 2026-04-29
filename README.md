@@ -4,7 +4,7 @@
 
 ## 在线游玩
 
-👉 [点击开始游戏](https://你的用户名.github.io/cat-jump/)
+👉 [点击开始游戏](https://ch4ind3v.github.io/cat-jump/)
 
 ## 操作方式
 

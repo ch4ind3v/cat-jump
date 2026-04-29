@@ -342,7 +342,7 @@
         
         let gameState = 'menu';
         let score = 0;
-        let highScore = localStorage.getItem('catJumpHighScore') || 0;
+        let highScore = parseInt(localStorage.getItem('catJumpHighScore')) || 0;
         document.getElementById('high-score').textContent = '最高: ' + highScore;
         
         let cameraY = 0;

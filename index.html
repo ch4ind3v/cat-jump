@@ -335,15 +335,18 @@
             const cx = cat.x + cat.width / 2;
             const cy = screenY + cat.height / 2;
             
+            // 可爱的弹跳缩放：跳跃时压扁，下落时拉长
+            const squash = Math.max(-0.15, Math.min(0.15, cat.vy * 0.008));
+            const scaleX = cat.facing * (1 + squash);
+            const scaleY = 1 - squash;
+            
             ctx.translate(cx, cy);
-            ctx.scale(cat.facing, 1);
-            const tilt = Math.max(-0.35, Math.min(0.35, cat.vy * 0.025));
-            ctx.rotate(tilt);
+            ctx.scale(scaleX, scaleY);
             ctx.translate(-cx, -cy);
             
             if (window.catImage.complete && window.catImage.naturalWidth > 0) {
                 const imgSize = 55;
-                ctx.imageSmoothingEnabled = false; // 保持像素锐利
+                ctx.imageSmoothingEnabled = false;
                 ctx.shadowColor = 'rgba(0,0,0,0.25)';
                 ctx.shadowBlur = 10;
                 ctx.shadowOffsetY = 4;

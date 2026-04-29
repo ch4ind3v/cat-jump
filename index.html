@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>超级明治跳 - Doodle Jump</title>
+    <title>明治太空跳 - Space Jump</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
         
@@ -247,8 +247,8 @@
     </div>
     
     <div id="start-screen">
-        <h1>🐱 超级明治跳</h1>
-        <p>帮助明治跳得更高！</p>
+        <h1>🚀 明治太空跳</h1>
+        <p>帮助明治飞向宇宙！</p>
         <div id="challenge-banner" class="challenge-banner hidden"></div>
         <input type="text" id="player-name" class="name-input" placeholder="输入你的名字" maxlength="8">
         <button class="btn" onclick="startGame()">开始游戏</button>
@@ -351,8 +351,8 @@
             
             if (navigator.share) {
                 navigator.share({
-                    title: '超级明治跳挑战',
-                    text: `${name} 在超级明治跳中得了 ${score} 分！你能超过他吗？`,
+                    title: '明治太空跳挑战',
+                    text: `${name} 在明治太空跳中得了 ${score} 分！你能超过他吗？`,
                     url: shareUrl
                 }).catch(() => {});
             } else if (navigator.clipboard) {
@@ -601,84 +601,93 @@
             const r = 6;
             
             if (p.type === 'normal') {
-                // 木质圆桌/酒桶平台
-                ctx.shadowColor = 'rgba(0,0,0,0.4)';
-                ctx.shadowBlur = 8;
+                // 太空站金属平台
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 10;
                 ctx.shadowOffsetY = 4;
                 
-                // 桌面厚度（深色木边）
-                roundRect(ctx, p.x, screenY + 2, p.width, p.height, r);
-                ctx.fillStyle = '#3d1f0a';
+                // 平台主体（深灰金属）
+                roundRect(ctx, p.x, screenY, p.width, p.height, r);
+                ctx.fillStyle = '#3a3a4a';
                 ctx.fill();
                 
-                // 桌面（暖木色）
-                roundRect(ctx, p.x, screenY, p.width, p.height * 0.7, {tl: r, tr: r, bl: r, br: r});
-                ctx.fillStyle = '#8B5A2B';
+                // 金属高光条
+                ctx.fillStyle = '#5a5a6a';
+                ctx.fillRect(p.x + 3, screenY + 2, p.width - 6, 3);
+                
+                // 铆钉/螺丝细节
+                ctx.fillStyle = '#888899';
+                ctx.beginPath();
+                ctx.arc(p.x + 8, screenY + p.height/2, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x + p.width - 8, screenY + p.height/2, 2, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 木纹高光
-                ctx.fillStyle = '#A06B35';
-                ctx.fillRect(p.x + 4, screenY + 2, p.width - 8, 2);
-                ctx.fillRect(p.x + 8, screenY + 5, p.width - 16, 1);
+                // 侧面厚度
+                ctx.fillStyle = '#2a2a3a';
+                roundRect(ctx, p.x, screenY + p.height * 0.6, p.width, p.height * 0.4, {tl: 0, tr: 0, bl: r, br: r});
+                ctx.fill();
                 
-                // 桌腿阴影
                 ctx.shadowColor = 'transparent';
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.fillRect(p.x + 10, screenY + p.height * 0.7, 4, 6);
-                ctx.fillRect(p.x + p.width - 14, screenY + p.height * 0.7, 4, 6);
                 
             } else if (p.type === 'moving') {
-                // 吊灯平台
-                ctx.shadowColor = 'rgba(255,200,80,0.3)';
+                // 能量平台（发光）
+                ctx.shadowColor = 'rgba(0,200,255,0.5)';
                 ctx.shadowBlur = 15;
-                ctx.shadowOffsetY = 0;
+                ctx.shadowOffsetY = 2;
                 
-                // 灯罩
-                roundRect(ctx, p.x + 8, screenY, p.width - 16, p.height * 0.6, {tl: 4, tr: 4, bl: 2, br: 2});
-                ctx.fillStyle = '#D4A843';
+                // 能量核心
+                roundRect(ctx, p.x + 2, screenY + 2, p.width - 4, p.height - 4, r);
+                ctx.fillStyle = '#0a2a3a';
                 ctx.fill();
                 
-                // 灯泡发光
-                ctx.fillStyle = '#FFE4A0';
-                ctx.beginPath();
-                ctx.arc(p.x + p.width/2, screenY + p.height * 0.5, 5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // 光晕
-                ctx.shadowColor = 'transparent';
-                ctx.fillStyle = 'rgba(255,228,160,0.15)';
-                ctx.beginPath();
-                ctx.arc(p.x + p.width/2, screenY + p.height * 0.5, 18, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // 吊线
-                ctx.strokeStyle = '#5a4a3a';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(p.x + p.width/2, screenY - 8);
-                ctx.lineTo(p.x + p.width/2, screenY);
+                // 发光边缘
+                ctx.strokeStyle = '#00D4FF';
+                ctx.lineWidth = 2;
+                roundRect(ctx, p.x + 2, screenY + 2, p.width - 4, p.height - 4, r);
                 ctx.stroke();
                 
+                // 中心能量条
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.6)';
+                ctx.fillRect(p.x + 8, screenY + p.height/2 - 1, p.width - 16, 2);
+                
+                // 脉冲光点
+                const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+                ctx.fillStyle = `rgba(0, 212, 255, ${pulse})`;
+                ctx.beginPath();
+                ctx.arc(p.x + p.width/2, screenY + p.height/2, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.shadowColor = 'transparent';
+                
             } else if (p.type === 'fragile') {
-                // 高脚杯/酒瓶平台
-                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                // 碎裂小行星平台
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
                 ctx.shadowBlur = 6;
                 ctx.shadowOffsetY = 2;
                 
-                // 杯身
-                roundRect(ctx, p.x + 10, screenY, p.width - 20, p.height, {tl: 3, tr: 3, bl: 3, br: 3});
-                ctx.fillStyle = '#6B8E6B';
+                // 岩石主体
+                roundRect(ctx, p.x, screenY, p.width, p.height, r);
+                ctx.fillStyle = '#5a4a3a';
                 ctx.fill();
                 
-                // 液体（酒）
-                roundRect(ctx, p.x + 12, screenY + 3, p.width - 24, p.height * 0.5, {tl: 2, tr: 2, bl: 0, br: 0});
-                ctx.fillStyle = '#8B2323';
+                // 陨石坑/裂纹
+                ctx.fillStyle = '#3a2a1a';
+                ctx.beginPath();
+                ctx.arc(p.x + 15, screenY + 5, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x + p.width - 12, screenY + 7, 3, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // 杯底
+                // 高亮边缘（即将碎裂的警告）
+                ctx.strokeStyle = 'rgba(255, 100, 50, 0.4)';
+                ctx.lineWidth = 1;
+                roundRect(ctx, p.x + 1, screenY + 1, p.width - 2, p.height - 2, r);
+                ctx.stroke();
+                
                 ctx.shadowColor = 'transparent';
-                ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                ctx.fillRect(p.x + 10, screenY + p.height - 2, p.width - 20, 2);
             }
             
             ctx.restore();
@@ -690,18 +699,31 @@
                 if (screenY < -50 || screenY > canvas.height + 50) return;
                 
                 ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.2)';
-                ctx.shadowBlur = 5;
-                ctx.shadowOffsetY = 3;
                 
-                ctx.fillStyle = '#FF4500';
-                roundRect(ctx, s.x + 2, screenY, s.width - 4, s.height, 3);
+                // 推进器底座
+                ctx.fillStyle = '#4a4a5a';
+                roundRect(ctx, s.x + 2, screenY + 5, s.width - 4, s.height - 5, 2);
                 ctx.fill();
                 
-                ctx.fillStyle = '#FFD700';
-                ctx.fillRect(s.x + 4, screenY + 2, s.width - 8, 3);
-                ctx.fillStyle = '#FF6347';
-                ctx.fillRect(s.x + 4, screenY + 7, s.width - 8, 4);
+                // 推进器喷嘴
+                ctx.fillStyle = '#FF4500';
+                ctx.beginPath();
+                ctx.moveTo(s.x + s.width/2, screenY + s.height);
+                ctx.lineTo(s.x + 4, screenY + 5);
+                ctx.lineTo(s.x + s.width - 4, screenY + 5);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 火焰效果（如果激活）
+                if (s.active || s.compressTimer > 0) {
+                    ctx.fillStyle = `rgba(0, 212, 255, ${0.6 + Math.random() * 0.4})`;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x + s.width/2, screenY + s.height + 8);
+                    ctx.lineTo(s.x + 6, screenY + s.height);
+                    ctx.lineTo(s.x + s.width - 6, screenY + s.height);
+                    ctx.closePath();
+                    ctx.fill();
+                }
                 
                 ctx.restore();
             });
@@ -913,104 +935,136 @@
             }
         }
         
-        function drawSignboard() {
-            // 招牌挂在墙上，随相机缓慢移动
-            const signY = canvas.height * 0.12 + cameraY * 0.02;
-            const signX = canvas.width * 0.5;
-            const signW = 140;
-            const signH = 50;
+        function drawBlackHole() {
+            const bhX = canvas.width * 0.82;
+            const bhY = canvas.height * 0.18 + cameraY * 0.03;
+            const bhR = 35;
             
-            // 挂绳
-            ctx.strokeStyle = '#5a4a3a';
-            ctx.lineWidth = 2;
+            // 引力透镜扭曲效果（外围光晕）
+            const lensGradient = ctx.createRadialGradient(bhX, bhY, bhR * 1.2, bhX, bhY, bhR * 3);
+            lensGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            lensGradient.addColorStop(0.5, 'rgba(100, 150, 255, 0.05)');
+            lensGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = lensGradient;
             ctx.beginPath();
-            ctx.moveTo(signX - signW * 0.3, signY - 20);
-            ctx.lineTo(signX - signW * 0.3, signY);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(signX + signW * 0.3, signY - 20);
-            ctx.lineTo(signX + signW * 0.3, signY);
-            ctx.stroke();
-            
-            // 招牌板阴影
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            roundRect(ctx, signX - signW/2 + 2, signY + 2, signW, signH, 6);
+            ctx.arc(bhX, bhY, bhR * 3, 0, Math.PI * 2);
             ctx.fill();
             
-            // 招牌板（深色木质）
-            ctx.fillStyle = '#3d2010';
-            roundRect(ctx, signX - signW/2, signY, signW, signH, 6);
+            // 旋转的吸积盘
+            const time = Date.now() * 0.0005;
+            for (let i = 0; i < 3; i++) {
+                const angle = time + (i * Math.PI * 2 / 3);
+                const rx = bhR * (1.3 + i * 0.4);
+                const ry = bhR * (0.4 + i * 0.15);
+                
+                ctx.save();
+                ctx.translate(bhX, bhY);
+                ctx.rotate(angle);
+                
+                const diskColors = ['#FF6B35', '#FFD700', '#87CEEB'];
+                ctx.strokeStyle = diskColors[i];
+                ctx.lineWidth = 2 + i;
+                ctx.globalAlpha = 0.6 - i * 0.15;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+            ctx.globalAlpha = 1;
+            
+            // 事件视界（黑色核心）
+            const coreGradient = ctx.createRadialGradient(bhX, bhY, 0, bhX, bhY, bhR);
+            coreGradient.addColorStop(0, '#000000');
+            coreGradient.addColorStop(0.7, '#000000');
+            coreGradient.addColorStop(0.85, '#1a0a2e');
+            coreGradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(bhX, bhY, bhR, 0, Math.PI * 2);
             ctx.fill();
-            
-            // 招牌边框（金色）
-            ctx.strokeStyle = '#B8860B';
-            ctx.lineWidth = 2;
-            roundRect(ctx, signX - signW/2 + 3, signY + 3, signW - 6, signH - 6, 4);
-            ctx.stroke();
-            
-            // 文字 "这有山"
-            ctx.fillStyle = '#FFD700';
-            ctx.font = 'bold 22px "Nunito", "Segoe UI", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('这有山', signX, signY + signH/2);
-            
-            // 左右两盏小灯
-            const lampY = signY + signH + 8;
-            [-1, 1].forEach(dir => {
-                const lx = signX + dir * (signW/2 + 15);
-                // 灯罩
-                ctx.fillStyle = '#8B4513';
+        }
+        
+        let spaceships = [];
+        function initSpaceships() {
+            spaceships = [];
+            for (let i = 0; i < 3; i++) {
+                spaceships.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height * 2,
+                    speed: 0.3 + Math.random() * 0.5,
+                    size: 15 + Math.random() * 10,
+                    angle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        
+        function drawSpaceships() {
+            spaceships.forEach(s => {
+                const screenY = s.y + cameraY * 0.15;
+                if (screenY < -50 || screenY > canvas.height + 50) return;
+                
+                s.x += s.speed;
+                if (s.x > canvas.width + 50) s.x = -50;
+                
+                ctx.save();
+                ctx.translate(s.x, screenY);
+                ctx.rotate(s.angle);
+                
+                // 飞船主体
+                ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
-                ctx.arc(lx, lampY, 6, 0, Math.PI * 2);
+                ctx.moveTo(s.size, 0);
+                ctx.lineTo(-s.size * 0.5, -s.size * 0.4);
+                ctx.lineTo(-s.size * 0.3, 0);
+                ctx.lineTo(-s.size * 0.5, s.size * 0.4);
+                ctx.closePath();
                 ctx.fill();
-                // 灯光
-                ctx.fillStyle = 'rgba(255, 200, 80, 0.6)';
+                
+                // 驾驶舱
+                ctx.fillStyle = '#4FC3F7';
                 ctx.beginPath();
-                ctx.arc(lx, lampY, 10, 0, Math.PI * 2);
+                ctx.arc(s.size * 0.2, 0, s.size * 0.2, 0, Math.PI * 2);
                 ctx.fill();
-                // 光晕
-                ctx.fillStyle = 'rgba(255, 200, 80, 0.1)';
+                
+                // 引擎尾焰
+                const flameLen = s.size * (0.8 + Math.random() * 0.4);
+                ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, 0.8)`;
                 ctx.beginPath();
-                ctx.arc(lx, lampY, 20, 0, Math.PI * 2);
+                ctx.moveTo(-s.size * 0.3, -s.size * 0.15);
+                ctx.lineTo(-s.size * 0.3 - flameLen, 0);
+                ctx.lineTo(-s.size * 0.3, s.size * 0.15);
+                ctx.closePath();
                 ctx.fill();
+                
+                ctx.restore();
             });
         }
         
         function draw() {
-            // 深夜小酒馆背景
+            // 深空背景
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#0d0603');      // 天花板：深棕黑
-            gradient.addColorStop(0.35, '#1a0d08');   // 墙壁上半
-            gradient.addColorStop(0.65, '#241308');   // 墙壁下半
-            gradient.addColorStop(1, '#0f0805');      // 地板
+            gradient.addColorStop(0, '#050510');
+            gradient.addColorStop(0.4, '#0a0a1a');
+            gradient.addColorStop(0.7, '#0d1020');
+            gradient.addColorStop(1, '#080818');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // 木地板线条（横向木纹）
-            ctx.strokeStyle = 'rgba(60, 35, 20, 0.3)';
-            ctx.lineWidth = 1;
-            const floorStart = canvas.height * 0.7;
-            for (let y = floorStart; y < canvas.height; y += 12) {
-                ctx.beginPath();
-                ctx.moveTo(0, y + cameraY * 0.05);
-                ctx.lineTo(canvas.width, y + cameraY * 0.05);
-                ctx.stroke();
-            }
+            // 星云色彩（远处）
+            const nebula = ctx.createRadialGradient(
+                canvas.width * 0.2, canvas.height * 0.3 + cameraY * 0.02, 0,
+                canvas.width * 0.2, canvas.height * 0.3 + cameraY * 0.02, canvas.width * 0.6
+            );
+            nebula.addColorStop(0, 'rgba(80, 40, 120, 0.08)');
+            nebula.addColorStop(0.5, 'rgba(40, 60, 120, 0.04)');
+            nebula.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = nebula;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // 墙壁装饰线
-            ctx.strokeStyle = 'rgba(120, 80, 40, 0.2)';
-            ctx.lineWidth = 2;
-            const wainscotY = canvas.height * 0.4;
-            ctx.beginPath();
-            ctx.moveTo(0, wainscotY + cameraY * 0.03);
-            ctx.lineTo(canvas.width, wainscotY + cameraY * 0.03);
-            ctx.stroke();
-            
-            // 酒馆招牌 "这有山"
-            drawSignboard();
-            
+            drawBlackHole();
             drawStars();
+            drawClouds();
+            drawSpaceships();
             drawClouds();
             platforms.forEach(drawPlatform);
             drawSprings();
@@ -1094,6 +1148,7 @@
             initPlatforms();
             initClouds();
             initStars();
+            initSpaceships();
             
             gameState = 'playing';
             requestTiltPermission();

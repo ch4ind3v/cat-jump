@@ -408,8 +408,7 @@
             <button class="pay-btn pay-btn-secondary" onclick="hidePaymentModal()">取消</button>
             
             <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:10px;">
-                提示：将 <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;">images/wechat-qr.png</code> 替换为你的微信收款码
-            </p>
+                已配置微信收款码
         </div>
     </div>
 
@@ -1647,8 +1646,8 @@
             qrImg.onerror = function() {
                 // 保留默认提示
             };
-            // 尝试加载用户上传的收款码（需要用户把图片放到仓库里）
-            qrImg.src = 'images/wechat-qr.png';
+            // 加载微信收款码
+            qrImg.src = 'images/wechat-qr.jpg';
         }
         
         function confirmWechatPayment() {

@@ -557,11 +557,13 @@
             if (window.catImage.complete && window.catImage.naturalWidth > 0) {
                 const imgSize = 55;
                 ctx.imageSmoothingEnabled = false;
-                ctx.shadowColor = 'rgba(0,0,0,0.25)';
-                ctx.shadowBlur = 10;
-                ctx.shadowOffsetY = 4;
+                // 先画一个椭圆形阴影在脚下，不会覆盖透明区域
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(cx, cy + imgSize/2 - 2, imgSize * 0.35, imgSize * 0.1, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 再画明治本体
                 ctx.drawImage(window.catImage, cx - imgSize/2, cy - imgSize/2 + 2, imgSize, imgSize);
-                ctx.shadowColor = 'transparent';
             } else {
                 ctx.fillStyle = '#FFAA55';
                 roundRect(ctx, cat.x, screenY, cat.width, cat.height, 10);

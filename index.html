@@ -384,15 +384,32 @@
         </div>
     </div>
     
-    <!-- 支付弹窗 -->
+    <!-- 微信支付弹窗 -->
     <div id="payment-modal" class="hidden">
         <div class="payment-box">
-            <div class="cat-icon">🐱✨</div>
-            <h3>复活明治</h3>
-            <p>支付 ¥1.00，让明治原地满血复活，继续挑战高分！</p>
-            <button class="pay-btn pay-btn-primary" onclick="processPayment()">💳 立即支付 ¥1.00</button>
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="#07C160"><path d="M9.5 4C5.36 4 2 6.69 2 10c0 1.89 1.08 3.56 2.78 4.66L4 17l2.5-1.5c.89.31 1.87.5 2.91.5h.09c-.14-.45-.25-.92-.25-1.42 0-3.31 3.13-6 7-6 .23 0 .45.02.67.05C16.15 5.79 13.08 4 9.5 4zM6 9a1 1 0 110-2 1 1 0 010 2zm7 0a1 1 0 110-2 1 1 0 010 2z"/><path d="M22.5 14.5c0-2.48-2.46-4.5-5.5-4.5s-5.5 2.02-5.5 4.5c0 2.48 2.46 4.5 5.5 4.5.63 0 1.24-.1 1.81-.27L21 20l-.59-1.95c1.2-.87 2.09-2.17 2.09-3.55zm-7-1.5a.75.75 0 110-1.5.75.75 0 010 1.5zm4 0a.75.75 0 110-1.5.75.75 0 010 1.5z"/></svg>
+                <h3 style="margin:0;font-size:20px;">微信支付</h3>
+            </div>
+            <p style="font-size:28px;font-weight:900;color:#FFD700;margin:8px 0;">¥1.00</p>
+            <p style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:12px;">复活明治，继续挑战高分</p>
+            
+            <!-- 微信收款码区域 -->
+            <div class="qr-code" id="qr-code-area">
+                <div style="text-align:center;">
+                    <p style="margin:0 0 8px 0;font-size:13px;color:#666;">微信扫一扫支付</p>
+                    <p style="margin:0;font-size:11px;color:#999;">替换 images/wechat-qr.png<br>为你的收款码</p>
+                </div>
+            </div>
+            
+            <button class="pay-btn pay-btn-primary" onclick="confirmWechatPayment()" style="background:linear-gradient(135deg, #07C160, #05a350);color:#fff;">
+                ✅ 我已完成支付
+            </button>
             <button class="pay-btn pay-btn-secondary" onclick="hidePaymentModal()">取消</button>
-            <p style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:12px;">支付由 Stripe 安全处理</p>
+            
+            <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:10px;">
+                提示：将 <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;">images/wechat-qr.png</code> 替换为你的微信收款码
+            </p>
         </div>
     </div>
 
@@ -1443,26 +1460,17 @@
             document.getElementById('game-over-screen').classList.remove('hidden');
         }
         
-        // ===== 付费复活系统 =====
-        // 支付配置（用户可以修改为自己的支付链接）
-        const PAYMENT_CONFIG = {
-            enabled: true,
-            price: '¥1.00',
-            // Stripe Payment Link（可选）
-            stripeLink: '',
-            // PayPal 链接（可选）
-            paypalLink: '',
-            // 自定义支付链接（可选）
-            customLink: ''
-        };
-        
+        // ===== 微信支付复活系统 =====
         let hasRevivedThisGame = false;
+        let wechatQRLoaded = false;
         
         function showPaymentModal() {
             if (hasRevivedThisGame) {
                 alert('每局只能复活一次哦！');
                 return;
             }
+            // 尝试加载用户自定义的微信收款码
+            loadWechatQR();
             document.getElementById('payment-modal').classList.remove('hidden');
         }
         
@@ -1470,21 +1478,27 @@
             document.getElementById('payment-modal').classList.add('hidden');
         }
         
-        function processPayment() {
-            // 模拟支付成功（实际使用时替换为真实支付）
-            // 如果有配置 Stripe/PayPal 链接，打开链接
-            if (PAYMENT_CONFIG.stripeLink) {
-                window.open(PAYMENT_CONFIG.stripeLink, '_blank');
-                // Stripe 支付成功后通常会跳转回指定 URL
-                // 这里简化为直接复活（实际应该等支付回调）
-            } else if (PAYMENT_CONFIG.paypalLink) {
-                window.open(PAYMENT_CONFIG.paypalLink, '_blank');
-            } else if (PAYMENT_CONFIG.customLink) {
-                window.open(PAYMENT_CONFIG.customLink, '_blank');
-            }
-            
-            // 模拟：直接复活（演示用）
-            // 实际生产环境应该通过支付回调触发复活
+        function loadWechatQR() {
+            if (wechatQRLoaded) return;
+            const qrArea = document.getElementById('qr-code-area');
+            const qrImg = new Image();
+            qrImg.onload = function() {
+                qrArea.innerHTML = '';
+                qrImg.style.width = '150px';
+                qrImg.style.height = '150px';
+                qrImg.style.borderRadius = '8px';
+                qrArea.appendChild(qrImg);
+                wechatQRLoaded = true;
+            };
+            qrImg.onerror = function() {
+                // 保留默认提示
+            };
+            // 尝试加载用户上传的收款码（需要用户把图片放到仓库里）
+            qrImg.src = 'images/wechat-qr.png';
+        }
+        
+        function confirmWechatPayment() {
+            // 用户确认已完成微信支付
             hidePaymentModal();
             reviveCat();
         }

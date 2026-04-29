@@ -284,16 +284,16 @@
         }
         
         function generatePlatforms() {
-            const topPlatform = platforms[platforms.length - 1];
+            let topPlatform = platforms[platforms.length - 1];
             while (topPlatform.y + cameraY > -canvas.height) {
                 const newY = topPlatform.y - PLATFORM_GAP_MIN - Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
                 platforms.push(createPlatform(newY));
+                topPlatform = platforms[platforms.length - 1];
                 
                 if (Math.random() < 0.05) {
-                    const lastPlatform = platforms[platforms.length - 1];
                     springs.push({
-                        x: lastPlatform.x + lastPlatform.width / 2 - 10,
-                        y: lastPlatform.y - 15,
+                        x: topPlatform.x + topPlatform.width / 2 - 10,
+                        y: topPlatform.y - 15,
                         width: 20,
                         height: 15,
                         active: false,

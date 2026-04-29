@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>小猫跳跳 - Doodle Jump</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+        #game-ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+        }
+        #score {
+            font-size: 28px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        #high-score {
+            font-size: 16px;
+            color: #fff;
+            margin-top: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #start-screen h1 {
+            font-size: 48px;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+        #start-screen p {
+            font-size: 18px;
+            color: #fff;
+            margin-bottom: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #FFD700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+            pointer-events: all;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        #game-over-screen h2 {
+            font-size: 40px;
+            color: #FF6B6B;
+            margin-bottom: 20px;
+        }
+        #game-over-screen p {
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .controls-hint {
+            margin-top: 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="game-ui">
+        <div id="score">0</div>
+        <div id="high-score">最高: 0</div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>🐱 小猫跳跳</h1>
+        <p>帮助小猫跳得更高！</p>
+        <button class="btn" onclick="startGame()">开始游戏</button>
+        <div class="controls-hint">
+            电脑: ← → 方向键 或 A D 键<br>
+            手机: 点击屏幕左右侧
+        </div>
+    </div>
+    
+    <div id="game-over-screen" class="hidden">
+        <h2>游戏结束</h2>
+        <p id="final-score">得分: 0</p>
+        <p id="final-high">最高: 0</p>
+        <button class="btn" onclick="restartGame()">再玩一次</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 游戏状态
+        let gameState = 'menu'; // menu, playing, gameover
+        let score = 0;
+        let highScore = localStorage.getItem('catJumpHighScore') || 0;
+        document.getElementById('high-score').textContent = '最高: ' + highScore;
+        
+        // 相机偏移
+        let cameraY = 0;
+        let maxHeight = 0;
+        
+        // 小猫
+        const cat = {
+            x: 0,
+            y: 0,
+            width: 40,
+            height: 40,
+            vx: 0,
+            vy: 0,
+            speed: 5,
+            jumpPower: -13,
+            gravity: 0.4,
+            facing: 1, // 1 right, -1 left
+            animFrame: 0,
+            animTimer: 0
+        };
+        
+        // 平台
+        let platforms = [];
+        const PLATFORM_WIDTH = 70;
+        const PLATFORM_HEIGHT = 12;
+        const PLATFORM_GAP_MIN = 50;
+        const PLATFORM_GAP_MAX = 120;
+        
+        // 云朵背景
+        let clouds = [];
+        
+        // 星星（粒子效果）
+        let particles = [];
+        
+        // 输入状态
+        const keys = {};
+        let touchX = null;
+        
+        // 初始化小猫
+        function initCat() {
+            cat.x = canvas.width / 2 - cat.width / 2;
+            cat.y = canvas.height - 200;
+            cat.vx = 0;
+            cat.vy = cat.jumpPower;
+            cat.facing = 1;
+        }
+        
+        // 创建平台
+        function createPlatform(y) {
+            const types = ['normal', 'normal', 'normal', 'moving', 'fragile'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const x = Math.random() * (canvas.width - PLATFORM_WIDTH);
+            
+            return {
+                x: x,
+                y: y,
+                width: PLATFORM_WIDTH,
+                height: PLATFORM_HEIGHT,
+                type: type,
+                originalX: x,
+                moveSpeed: type === 'moving' ? (Math.random() > 0.5 ? 2 : -2) : 0,
+                moveRange: type === 'moving' ? 80 : 0,
+                broken: false,
+                breakTimer: 0
+            };
+        }
+        
+        // 初始化平台
+        function initPlatforms() {
+            platforms = [];
+            // 底部平台
+            platforms.push({
+                x: canvas.width / 2 - PLATFORM_WIDTH / 2,
+                y: canvas.height - 50,
+                width: PLATFORM_WIDTH + 40,
+                height: PLATFORM_HEIGHT,
+                type: 'normal',
+                originalX: canvas.width / 2 - PLATFORM_WIDTH / 2 - 20,
+                moveSpeed: 0,
+                moveRange: 0,
+                broken: false,
+                breakTimer: 0
+            });
+            
+            // 随机生成平台
+            let currentY = canvas.height - 50;
+            while (currentY > -canvas.height * 2) {
+                currentY -= PLATFORM_GAP_MIN + Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
+                platforms.push(createPlatform(currentY));
+            }
+        }
+        
+        // 初始化云朵
+        function initClouds() {
+            clouds = [];
+            for (let i = 0; i < 10; i++) {
+                clouds.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    width: 60 + Math.random() * 80,
+                    speed: 0.2 + Math.random() * 0.5,
+                    opacity: 0.3 + Math.random() * 0.4
+                });
+            }
+        }
+        
+        // 生成新平台
+        function generatePlatforms() {
+            const topPlatform = platforms[platforms.length - 1];
+            while (topPlatform.y + cameraY > -PLATFORM_GAP_MAX) {
+                const newY = topPlatform.y - PLATFORM_GAP_MIN - Math.random() * (PLATFORM_GAP_MAX - PLATFORM_GAP_MIN);
+                platforms.push(createPlatform(newY));
+                
+                // 偶尔生成弹簧
+                if (Math.random() < 0.05) {
+                    const lastPlatform = platforms[platforms.length - 1];
+                    springs.push({
+                        x: lastPlatform.x + lastPlatform.width / 2 - 10,
+                        y: lastPlatform.y - 15,
+                        width: 20,
+                        height: 15,
+                        active: false,
+                        compressTimer: 0
+                    });
+                }
+            }
+        }
+        
+        // 清理下方平台
+        function cleanupPlatforms() {
+            platforms = platforms.filter(p => p.y + cameraY < canvas.height + 100);
+            springs = springs.filter(s => s.y + cameraY < canvas.height + 100);
+        }
+        
+        // 弹簧
+        let springs = [];
+        
+        // 小猫图片
+        window.catImage = new Image();
+        window.catImage.src = 'mingzhi.jpg';
+        
+        // 绘制小猫
+        function drawCat() {
+            ctx.save();
+            const cx = cat.x + cat.width / 2;
+            const cy = cat.y + cat.height / 2;
+            
+            ctx.translate(cx, cy);
+            ctx.scale(cat.facing, 1);
+            ctx.translate(-cx, -cy);
+            
+            if (window.catImage.complete && window.catImage.naturalWidth > 0) {
+                // 绘制小猫照片
+                const imgSize = 55;
+                ctx.drawImage(window.catImage, cx - imgSize/2, cy - imgSize/2 + 2, imgSize, imgSize);
+            } else {
+                // 图片还没加载完，先画一个占位小猫
+                ctx.fillStyle = '#FFAA55';
+                ctx.fillRect(cat.x, cat.y, cat.width, cat.height);
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.fillText('🐱', cat.x + 8, cat.y + 28);
+            }
+            
+            ctx.restore();
+        }
+        
+        // 绘制平台
+        function drawPlatform(p) {
+            if (p.broken) return;
+            
+            const screenY = p.y + cameraY;
+            if (screenY < -50 || screenY > canvas.height + 50) return;
+            
+            if (p.type === 'normal') {
+                // 草地平台
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(p.x + 2, screenY + 4, p.width - 4, p.height - 4);
+                ctx.fillStyle = '#7CFC00';
+                ctx.fillRect(p.x, screenY, p.width, 6);
+                ctx.fillStyle = '#32CD32';
+                ctx.fillRect(p.x + 3, screenY + 2, p.width - 6, 2);
+            } else if (p.type === 'moving') {
+                // 蓝色移动平台
+                ctx.fillStyle = '#4169E1';
+                ctx.fillRect(p.x, screenY, p.width, p.height);
+                ctx.fillStyle = '#87CEEB';
+                ctx.fillRect(p.x + 2, screenY + 2, p.width - 4, 4);
+                // 箭头
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.fillText('↔', p.x + p.width/2 - 6, screenY + 10);
+            } else if (p.type === 'fragile') {
+                // 易碎平台
+                ctx.fillStyle = '#CD853F';
+                ctx.fillRect(p.x, screenY, p.width, p.height);
+                ctx.fillStyle = '#DEB887';
+                for (let i = 0; i < p.width; i += 10) {
+                    ctx.fillRect(p.x + i, screenY, 2, p.height);
+                }
+                // 裂纹
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(p.x + 10, screenY + 2);
+                ctx.lineTo(p.x + 20, screenY + 8);
+                ctx.lineTo(p.x + 30, screenY + 4);
+                ctx.stroke();
+            }
+        }
+        
+        // 绘制弹簧
+        function drawSprings() {
+            springs.forEach(s => {
+                const screenY = s.y + cameraY;
+                if (screenY < -50 || screenY > canvas.height + 50) return;
+                
+                ctx.fillStyle = '#FF6347';
+                ctx.fillRect(s.x + 4, screenY + 5, s.width - 8, s.height - 5);
+                ctx.fillStyle = '#FF4500';
+                ctx.fillRect(s.x, screenY, s.width, 5);
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(s.x + 2, screenY + 2, s.width - 4, 2);
+            });
+        }
+        
+        // 绘制云朵
+        function drawClouds() {
+            clouds.forEach(c => {
+                const screenY = c.y + cameraY * 0.3;
+                if (screenY < -100 || screenY > canvas.height + 100) return;
+                
+                ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity})`;
+                ctx.beginPath();
+                ctx.arc(c.x, screenY, c.width * 0.3, 0, Math.PI * 2);
+                ctx.arc(c.x + c.width * 0.25, screenY - c.width * 0.15, c.width * 0.35, 0, Math.PI * 2);
+                ctx.arc(c.x + c.width * 0.5, screenY, c.width * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        // 绘制粒子
+        function drawParticles() {
+            particles.forEach((p, i) => {
+                p.life--;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    return;
+                }
+                
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y + cameraY, p.size, p.size);
+                ctx.globalAlpha = 1;
+            });
+        }
+        
+        // 创建粒子
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4 - 2,
+                    life: 20 + Math.random() * 20,
+                    color: color,
+                    size: 2 + Math.random() * 4
+                });
+            }
+        }
+        
+        // 碰撞检测
+        function checkCollisions() {
+            // 平台碰撞
+            platforms.forEach(p => {
+                if (p.broken) return;
+                
+                // 只有下落时才检测
+                if (cat.vy > 0 &&
+                    cat.x + cat.width > p.x &&
+                    cat.x < p.x + p.width &&
+                    cat.y + cat.height > p.y &&
+                    cat.y + cat.height < p.y + p.height + cat.vy + 5) {
+                    
+                    if (p.type === 'fragile') {
+                        p.broken = true;
+                        createParticles(p.x + p.width/2, p.y, '#DEB887', 8);
+                        cat.vy = cat.jumpPower * 0.7;
+                    } else {
+                        cat.y = p.y - cat.height;
+                        cat.vy = cat.jumpPower;
+                        
+                        // 粒子效果
+                        createParticles(cat.x + cat.width/2, cat.y + cat.height, '#7CFC00', 5);
+                    }
+                }
+            });
+            
+            // 弹簧碰撞
+            springs.forEach(s => {
+                if (!s.active &&
+                    cat.x + cat.width > s.x &&
+                    cat.x < s.x + s.width &&
+                    cat.y + cat.height > s.y &&
+                    cat.y + cat.height < s.y + s.height + cat.vy + 5) {
+                    
+                    cat.vy = cat.jumpPower * 1.8;
+                    s.active = true;
+                    s.compressTimer = 10;
+                    createParticles(s.x + s.width/2, s.y, '#FFD700', 10);
+                }
+            });
+        }
+        
+        // 更新游戏
+        function update() {
+            if (gameState !== 'playing') return;
+            
+            // 水平移动
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                cat.vx = -cat.speed;
+                cat.facing = -1;
+            } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                cat.vx = cat.speed;
+                cat.facing = 1;
+            } else if (touchX !== null) {
+                if (touchX < canvas.width / 2) {
+                    cat.vx = -cat.speed;
+                    cat.facing = -1;
+                } else {
+                    cat.vx = cat.speed;
+                    cat.facing = 1;
+                }
+            } else {
+                cat.vx *= 0.8;
+            }
+            
+            // 应用重力
+            cat.vy += cat.gravity;
+            
+            // 更新位置
+            cat.x += cat.vx;
+            cat.y += cat.vy;
+            
+            // 左右穿墙
+            if (cat.x + cat.width < 0) {
+                cat.x = canvas.width;
+            } else if (cat.x > canvas.width) {
+                cat.x = -cat.width;
+            }
+            
+            // 相机跟随
+            const targetCameraY = Math.min(cameraY, canvas.height / 2 - cat.y);
+            if (targetCameraY < cameraY) {
+                cameraY = targetCameraY;
+            }
+            
+            // 更新分数
+            const currentHeight = Math.floor((canvas.height - 50 - cat.y) / 10);
+            if (currentHeight > score) {
+                score = currentHeight;
+                document.getElementById('score').textContent = score;
+            }
+            
+            // 生成新平台
+            generatePlatforms();
+            cleanupPlatforms();
+            
+            // 更新移动平台
+            platforms.forEach(p => {
+                if (p.type === 'moving' && !p.broken) {
+                    p.x += p.moveSpeed;
+                    if (Math.abs(p.x - p.originalX) > p.moveRange) {
+                        p.moveSpeed *= -1;
+                    }
+                    if (p.x < 0) p.x = 0;
+                    if (p.x + p.width > canvas.width) p.x = canvas.width - p.width;
+                }
+                
+                if (p.broken && p.breakTimer < 10) {
+                    p.breakTimer++;
+                }
+            });
+            
+            // 更新弹簧
+            springs.forEach(s => {
+                if (s.compressTimer > 0) {
+                    s.compressTimer--;
+                    if (s.compressTimer === 0) s.active = false;
+                }
+            });
+            
+            // 碰撞检测
+            checkCollisions();
+            
+            // 更新云朵
+            clouds.forEach(c => {
+                c.x += c.speed;
+                if (c.x > canvas.width + c.width) {
+                    c.x = -c.width;
+                    c.y = Math.random() * canvas.height - cameraY;
+                }
+            });
+            
+            // 游戏结束检测
+            if (cat.y + cameraY > canvas.height + 50) {
+                gameOver();
+            }
+        }
+        
+        // 绘制游戏
+        function draw() {
+            // 清空画布
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 天空渐变
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#4FC3F7');
+            gradient.addColorStop(1, '#E1F5FE');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制云朵
+            drawClouds();
+            
+            // 绘制平台
+            platforms.forEach(drawPlatform);
+            
+            // 绘制弹簧
+            drawSprings();
+            
+            // 绘制小猫
+            drawCat();
+            
+            // 绘制粒子
+            drawParticles();
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            
+            score = 0;
+            cameraY = 0;
+            particles = [];
+            springs = [];
+            document.getElementById('score').textContent = '0';
+            
+            initCat();
+            initPlatforms();
+            initClouds();
+            
+            gameState = 'playing';
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            gameState = 'gameover';
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('catJumpHighScore', highScore);
+            }
+            
+            document.getElementById('final-score').textContent = '得分: ' + score;
+            document.getElementById('final-high').textContent = '最高: ' + highScore;
+            document.getElementById('high-score').textContent = '最高: ' + highScore;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+        }
+        
+        // 重新开始
+        function restartGame() {
+            startGame();
+        }
+        
+        // 事件监听
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // 触摸控制
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchX = e.touches[0].clientX;
+        }, { passive: false });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            touchX = e.touches[0].clientX;
+        }, { passive: false });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchX = null;
+        }, { passive: false });
+        
+        // 鼠标控制（用于测试）
+        canvas.addEventListener('mousedown', (e) => {
+            touchX = e.clientX;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (touchX !== null) {
+                touchX = e.clientX;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            touchX = null;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            touchX = null;
+        });
+        
+        // 启动游戏循环
+        initClouds();
+        draw();
+        gameLoop();
+    </script>
+</body>
+</html>

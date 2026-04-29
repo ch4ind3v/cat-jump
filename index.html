@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>明治太空跳 - Space Jump</title>
+    <title>明治比比太空大对决</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
         
@@ -365,7 +365,7 @@
     <div class="version-tag" id="version-tag"></div>
     
     <div id="start-screen">
-        <h1>🚀 明治太空跳</h1>
+        <h1>🚀 明治比比太空大对决</h1>
         <p>选择你的太空伙伴！</p>
         <div id="challenge-banner" class="challenge-banner hidden"></div>
         <div class="char-select">
@@ -438,7 +438,7 @@
         window.addEventListener('resize', resizeCanvas);
         
         // ===== 版本检测（解决 GitHub Pages CDN 缓存问题）=====
-        const APP_VERSION = '8';
+        const APP_VERSION = '9';
         const storedVersion = localStorage.getItem('catJumpVersion');
         
         function forceRefresh() {
@@ -962,8 +962,8 @@
             
             if (navigator.share) {
                 navigator.share({
-                    title: '明治太空跳挑战',
-                    text: `${name} 在明治太空跳中得了 ${score} 分！你能超过他吗？`,
+                    title: '明治比比太空大对决',
+                    text: `${name} 在明治比比太空大对决中得了 ${score} 分！你能超过他吗？`,
                     url: shareUrl
                 }).catch(() => {});
             } else if (navigator.clipboard) {

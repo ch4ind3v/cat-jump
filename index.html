@@ -1405,51 +1405,75 @@
         }
         
         function handleOrientation(event) {
-            tiltGamma = event.gamma || 0;
+            // iOS 18 有时 gamma 为 null，尝试用 beta 代替（竖屏时左右倾斜）
+            if (event.gamma !== null && !isNaN(event.gamma)) {
+                tiltGamma = event.gamma;
+            } else if (event.beta !== null && !isNaN(event.beta)) {
+                tiltGamma = event.beta;
+            }
         }
         
         function handleMotion(event) {
-            const accel = event.accelerationIncludingGravity;
-            if (accel && accel.x !== null) {
-                // x轴加速度对应左右倾斜，范围约 -10 ~ 10
+            // iOS 18 更倾向于通过 devicemotion 提供数据
+            if (event.rotationRate && event.rotationRate.gamma !== null) {
+                // 旋转速率（度/秒），积分近似角度
+                tiltGamma = event.rotationRate.gamma * 0.3;
+            } else if (event.accelerationIncludingGravity && event.accelerationIncludingGravity.x !== null) {
+                const accel = event.accelerationIncludingGravity;
                 tiltGamma = accel.x * 3;
             }
         }
         
-        function requestTiltPermission() {
+        async function requestTiltPermission() {
             if (tiltRequested) return;
             tiltRequested = true;
             
-            // iOS 13+ 需要请求权限
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response === 'granted') {
-                            useTilt = true;
-                            window.addEventListener('deviceorientation', handleOrientation);
-                        }
-                    })
-                    .catch(() => {
-                        // iOS 权限被拒绝，尝试 devicemotion
-                        tryMotion();
-                    });
-            } else if (typeof DeviceOrientationEvent !== 'undefined') {
-                // Android 等支持 deviceorientation 的设备
-                useTilt = true;
-                window.addEventListener('deviceorientation', handleOrientation);
-                // 同时监听 devicemotion 作为增强
-                tryMotion();
-            } else if (typeof DeviceMotionEvent !== 'undefined') {
-                // 不支持 deviceorientation 但支持 devicemotion
-                tryMotion();
+            const needsOrientPermission = typeof DeviceOrientationEvent !== 'undefined' && 
+                                          typeof DeviceOrientationEvent.requestPermission === 'function';
+            const needsMotionPermission = typeof DeviceMotionEvent !== 'undefined' && 
+                                          typeof DeviceMotionEvent.requestPermission === 'function';
+            
+            if (needsOrientPermission || needsMotionPermission) {
+                try {
+                    // iOS 需要同时请求两种权限
+                    const promises = [];
+                    if (needsOrientPermission) {
+                        promises.push(DeviceOrientationEvent.requestPermission());
+                    }
+                    if (needsMotionPermission) {
+                        promises.push(DeviceMotionEvent.requestPermission());
+                    }
+                    
+                    const results = await Promise.all(promises);
+                    const anyGranted = results.some(r => r === 'granted');
+                    
+                    if (anyGranted) {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        window.addEventListener('devicemotion', handleMotion);
+                        useTilt = true;
+                    } else {
+                        showTiltHelp();
+                    }
+                } catch (err) {
+                    fallbackTilt();
+                }
+            } else {
+                fallbackTilt();
             }
-            // 桌面浏览器：都不支持，useTilt 保持 false，回退到触摸
         }
         
-        function tryMotion() {
-            if (typeof DeviceMotionEvent !== 'undefined') {
-                useTilt = true;
-                window.addEventListener('devicemotion', handleMotion);
+        function fallbackTilt() {
+            window.addEventListener('deviceorientation', handleOrientation);
+            window.addEventListener('devicemotion', handleMotion);
+            useTilt = true;
+        }
+        
+        function showTiltHelp() {
+            const hint = document.querySelector('.controls-hint');
+            if (hint) {
+                hint.innerHTML = '手机: <b style="color:#FFD700">倾斜手机左右移动</b><br>' +
+                    '<span style="color:#FF6B6B;font-size:11px;">⚠️ 请在 设置 → Safari → 动作与方向 开启权限</span><br>' +
+                    '<span style="color:rgba(255,255,255,0.5);">或点击屏幕左右侧控制</span>';
             }
         }
         

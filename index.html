@@ -291,8 +291,9 @@
         // 绘制小猫
         function drawCat() {
             ctx.save();
+            const screenY = cat.y + cameraY;
             const cx = cat.x + cat.width / 2;
-            const cy = cat.y + cat.height / 2;
+            const cy = screenY + cat.height / 2;
             
             ctx.translate(cx, cy);
             ctx.scale(cat.facing, 1);
@@ -305,10 +306,10 @@
             } else {
                 // 图片还没加载完，先画一个占位小猫
                 ctx.fillStyle = '#FFAA55';
-                ctx.fillRect(cat.x, cat.y, cat.width, cat.height);
+                ctx.fillRect(cat.x, screenY, cat.width, cat.height);
                 ctx.fillStyle = '#333';
                 ctx.font = '10px Arial';
-                ctx.fillText('🐱', cat.x + 8, cat.y + 28);
+                ctx.fillText('🐱', cat.x + 8, screenY + 28);
             }
             
             ctx.restore();
@@ -429,12 +430,12 @@
             platforms.forEach(p => {
                 if (p.broken) return;
                 
-                // 只有下落时才检测
+                // 只有下落时才检测，确保小猫是从上方落到平台上
                 if (cat.vy > 0 &&
                     cat.x + cat.width > p.x &&
                     cat.x < p.x + p.width &&
-                    cat.y + cat.height > p.y &&
-                    cat.y + cat.height < p.y + p.height + cat.vy + 5) {
+                    cat.y + cat.height >= p.y &&
+                    cat.y + cat.height - cat.vy <= p.y + p.height) {
                     
                     if (p.type === 'fragile') {
                         p.broken = true;
@@ -455,8 +456,8 @@
                 if (!s.active &&
                     cat.x + cat.width > s.x &&
                     cat.x < s.x + s.width &&
-                    cat.y + cat.height > s.y &&
-                    cat.y + cat.height < s.y + s.height + cat.vy + 5) {
+                    cat.y + cat.height >= s.y &&
+                    cat.y + cat.height - cat.vy <= s.y + s.height) {
                     
                     cat.vy = cat.jumpPower * 1.8;
                     s.active = true;

@@ -147,7 +147,7 @@
         <button class="btn" onclick="startGame()">开始游戏</button>
         <div class="controls-hint">
             电脑: ← → 方向键 或 A D 键<br>
-            手机: 点击屏幕左右侧
+            手机: 倾斜手机左右移动
         </div>
     </div>
     
@@ -204,6 +204,9 @@
         
         const keys = {};
         let touchX = null;
+        let tiltGamma = 0;
+        let useTilt = false;
+        let tiltRequested = false;
         
         function initCat() {
             cat.x = canvas.width / 2 - cat.width / 2;
@@ -649,6 +652,29 @@
             requestAnimationFrame(gameLoop);
         }
         
+        function handleOrientation(event) {
+            tiltGamma = event.gamma || 0;
+        }
+        
+        function requestTiltPermission() {
+            if (tiltRequested) return;
+            tiltRequested = true;
+            
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            useTilt = true;
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        }
+                    })
+                    .catch(() => {});
+            } else {
+                useTilt = true;
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+        }
+        
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('game-over-screen').classList.add('hidden');
@@ -665,6 +691,7 @@
             initStars();
             
             gameState = 'playing';
+            requestTiltPermission();
         }
         
         function gameOver() {

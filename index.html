@@ -374,7 +374,7 @@
                 <span class="char-label">🐱 明治</span>
             </div>
             <div class="char-option" id="char-bibi" onclick="selectCharacter('bibi')">
-                <img src="panbi.png?v=3" alt="比比">
+                <img src="panbi.png?v=4" alt="比比">
                 <span class="char-label">🐶 比比</span>
             </div>
         </div>
@@ -438,7 +438,7 @@
         window.addEventListener('resize', resizeCanvas);
         
         // ===== 版本检测（解决 GitHub Pages CDN 缓存问题）=====
-        const APP_VERSION = '11';
+        const APP_VERSION = '12';
         const storedVersion = localStorage.getItem('catJumpVersion');
         
         function forceRefresh() {
@@ -1149,7 +1149,7 @@
         window.catImage = new Image();
         window.catImage.src = 'mingzhi.png?v=3';
         window.bibiImage = new Image();
-        window.bibiImage.src = 'panbi.png?v=3';
+        window.bibiImage.src = 'panbi.png?v=4';
         
         let selectedCharacter = localStorage.getItem('catJumpCharacter') || 'mingzhi';
         

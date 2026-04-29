@@ -558,26 +558,36 @@
             const screenY = cat.y + cameraY;
             const cx = cat.x + cat.width / 2;
             const cy = screenY + cat.height / 2;
+            const imgSize = 55;
+            
+            // 呼吸效果（静止时轻微上下浮动）
+            const breathe = Math.sin(Date.now() * 0.003) * 0.015;
             
             // 可爱的弹跳缩放：跳跃时压扁，下落时拉长
             const squash = Math.max(-0.15, Math.min(0.15, cat.vy * 0.008));
             const scaleX = cat.facing * (1 + squash);
-            const scaleY = 1 - squash;
+            const scaleY = 1 - squash + breathe;
+            
+            // 尾巴摇摆（在画身体之前画，这样尾巴在身体后面）
+            drawTail(cx, cy + 5, imgSize);
             
             ctx.translate(cx, cy);
             ctx.scale(scaleX, scaleY);
             ctx.translate(-cx, -cy);
             
             if (window.catImage.complete && window.catImage.naturalWidth > 0) {
-                const imgSize = 55;
                 ctx.imageSmoothingEnabled = false;
-                // 先画一个椭圆形阴影在脚下，不会覆盖透明区域
+                // 阴影
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
                 ctx.beginPath();
                 ctx.ellipse(cx, cy + imgSize/2 - 2, imgSize * 0.35, imgSize * 0.1, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // 再画明治本体
+                // 明治本体
                 ctx.drawImage(window.catImage, cx - imgSize/2, cy - imgSize/2 + 2, imgSize, imgSize);
+                // 眼睛高光闪烁
+                drawEyeSparkle(cx, cy);
+                // 偶尔眨眼（画一条线覆盖眼睛）
+                drawBlink(cx, cy);
             } else {
                 ctx.fillStyle = '#FFAA55';
                 roundRect(ctx, cat.x, screenY, cat.width, cat.height, 10);
@@ -589,6 +599,78 @@
             }
             
             ctx.restore();
+        }
+        
+        function drawTail(cx, cy, imgSize) {
+            const time = Date.now() * 0.006;
+            const tailWag = Math.sin(time) * 4;
+            const tailCurve = Math.cos(time * 0.7) * 3;
+            
+            // 尾巴颜色匹配小猫毛色
+            ctx.strokeStyle = '#D4B896';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            
+            // 尾巴根部（身后偏下）
+            const startX = cx - cat.facing * (imgSize * 0.35);
+            const startY = cy + imgSize * 0.25;
+            
+            // 尾巴尖端
+            const endX = startX - cat.facing * (12 + tailWag);
+            const endY = startY + 18 + tailCurve;
+            
+            // 控制点（让尾巴有曲线）
+            const cpX = startX - cat.facing * (6 + tailWag * 0.5);
+            const cpY = startY + 8;
+            
+            ctx.moveTo(startX, startY);
+            ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+            ctx.stroke();
+            
+            // 尾巴尖端小白毛
+            ctx.fillStyle = '#F5E6D3';
+            ctx.beginPath();
+            ctx.arc(endX, endY, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawEyeSparkle(cx, cy) {
+            // 眼睛高光闪烁
+            const sparkle = Math.sin(Date.now() * 0.004);
+            if (sparkle > 0.6) {
+                const alpha = (sparkle - 0.6) * 2.5;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                // 左眼高光
+                ctx.beginPath();
+                ctx.arc(cx - 6 * cat.facing, cy - 6, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+                // 右眼高光
+                ctx.beginPath();
+                ctx.arc(cx + 6 * cat.facing, cy - 6, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function drawBlink(cx, cy) {
+            // 每3-4秒眨一次眼
+            const blinkCycle = (Date.now() % 3500) / 3500;
+            if (blinkCycle > 0.92 && blinkCycle < 0.97) {
+                // 眨眼：画两条水平线覆盖眼睛
+                ctx.strokeStyle = '#8B7355';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                // 左眼
+                ctx.beginPath();
+                ctx.moveTo(cx - 10 * cat.facing, cy - 5);
+                ctx.lineTo(cx - 2 * cat.facing, cy - 5);
+                ctx.stroke();
+                // 右眼
+                ctx.beginPath();
+                ctx.moveTo(cx + 2 * cat.facing, cy - 5);
+                ctx.lineTo(cx + 10 * cat.facing, cy - 5);
+                ctx.stroke();
+            }
         }
         
         function drawPlatform(p) {
@@ -819,12 +901,26 @@
                     
                     if (p.type === 'fragile') {
                         p.broken = true;
-                        createParticles(p.x + p.width/2, p.y, '#DEB887', 10);
+                        createParticles(p.x + p.width/2, p.y, '#FF6B35', 12);
                         cat.vy = cat.jumpPower * 0.7;
                     } else {
                         cat.y = p.y - cat.height;
                         cat.vy = cat.jumpPower;
-                        createParticles(cat.x + cat.width/2, cat.y + cat.height, '#7CFC00', 6);
+                        // 落地火花（太空风格：蓝色+橙色火花）
+                        createParticles(cat.x + cat.width/2, cat.y + cat.height, '#00D4FF', 6);
+                        createParticles(cat.x + cat.width/2, cat.y + cat.height, '#FF8C42', 4);
+                        // 落地小星星
+                        for (let i = 0; i < 3; i++) {
+                            particles.push({
+                                x: cat.x + cat.width/2 + (Math.random() - 0.5) * 30,
+                                y: cat.y + cat.height,
+                                vx: (Math.random() - 0.5) * 5,
+                                vy: -Math.random() * 4 - 1,
+                                life: 20 + Math.random() * 15,
+                                color: Math.random() > 0.5 ? '#FFD700' : '#FFFFFF',
+                                size: 2 + Math.random() * 2
+                            });
+                        }
                     }
                 }
             });
@@ -875,6 +971,19 @@
             
             cat.x += cat.vx;
             cat.y += cat.vy;
+            
+            // 跳跃拖尾效果（快速上升时产生蓝色能量粒子）
+            if (cat.vy < -8 && Math.random() < 0.4) {
+                particles.push({
+                    x: cat.x + cat.width/2 + (Math.random() - 0.5) * 20,
+                    y: cat.y + cat.height + 5,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: Math.random() * 3 + 1,
+                    life: 15 + Math.random() * 10,
+                    color: Math.random() > 0.5 ? '#00D4FF' : '#4FC3F7',
+                    size: 2 + Math.random() * 3
+                });
+            }
             
             if (cat.x + cat.width < 0) {
                 cat.x = canvas.width;

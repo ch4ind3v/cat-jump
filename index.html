@@ -776,6 +776,12 @@
         
         function renderLeaderboard() {
             const board = firebaseReady ? leaderboardData : getLocalLeaderboard();
+            
+            // 同步更新左上角"最高"为云端榜首（或本地最高）
+            if (board.length > 0) {
+                document.getElementById('high-score').textContent = '最高: ' + board[0].score;
+            }
+            
             const container = document.getElementById('leaderboard');
             if (!container) return;
             

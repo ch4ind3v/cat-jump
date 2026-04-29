@@ -304,8 +304,9 @@
         }
         
         function cleanupPlatforms() {
-            platforms = platforms.filter(p => p.y + cameraY < canvas.height + 100);
-            springs = springs.filter(s => s.y + cameraY < canvas.height + 100);
+            // 只保留屏幕上下各 2 屏范围内的平台，防止数组无限膨胀
+            platforms = platforms.filter(p => p.y + cameraY > -canvas.height * 2 && p.y + cameraY < canvas.height + 100);
+            springs = springs.filter(s => s.y + cameraY > -canvas.height * 2 && s.y + cameraY < canvas.height + 100);
         }
         
         let springs = [];
@@ -548,7 +549,13 @@
         function update() {
             if (gameState !== 'playing') return;
             
-            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+            // 水平移动 - 优先重力感应，其次键盘，最后触摸
+            if (useTilt && Math.abs(tiltGamma) > 3) {
+                const sensitivity = cat.speed / 25;
+                cat.vx = tiltGamma * sensitivity;
+                cat.vx = Math.max(-cat.speed, Math.min(cat.speed, cat.vx));
+                cat.facing = tiltGamma > 0 ? 1 : -1;
+            } else if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
                 cat.vx = -cat.speed;
                 cat.facing = -1;
             } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {

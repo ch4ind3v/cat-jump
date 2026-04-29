@@ -294,6 +294,61 @@
             z-index: 5;
             pointer-events: none;
         }
+        .char-select {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            justify-content: center;
+        }
+        .char-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            border: 3px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .char-option:hover {
+            border-color: rgba(255,255,255,0.5);
+            transform: scale(1.05);
+        }
+        .char-option.selected {
+            border-color: #FFD700;
+            background: rgba(255,215,0,0.15);
+            box-shadow: 0 0 20px rgba(255,215,0,0.3);
+        }
+        .char-option img {
+            width: 48px;
+            height: 48px;
+            image-rendering: pixelated;
+            object-fit: contain;
+        }
+        .char-option .char-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+            font-weight: 700;
+        }
+        .char-option.selected .char-label {
+            color: #FFD700;
+        }
+        .char-leader {
+            font-size: 11px;
+            color: #FFD700;
+            margin-top: 6px;
+            text-align: center;
+            min-height: 16px;
+        }
+        .leaderboard-item .char-icon {
+            margin-right: 4px;
+            font-size: 14px;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -311,8 +366,19 @@
     
     <div id="start-screen">
         <h1>🚀 明治太空跳</h1>
-        <p>帮助明治飞向宇宙！</p>
+        <p>选择你的太空伙伴！</p>
         <div id="challenge-banner" class="challenge-banner hidden"></div>
+        <div class="char-select">
+            <div class="char-option selected" id="char-mingzhi" onclick="selectCharacter('mingzhi')">
+                <img src="mingzhi.png?v=3" alt="明治">
+                <span class="char-label">🐱 明治</span>
+            </div>
+            <div class="char-option" id="char-bibi" onclick="selectCharacter('bibi')">
+                <img src="panbi.png" alt="比比">
+                <span class="char-label">🐶 比比</span>
+            </div>
+        </div>
+        <div class="char-leader" id="char-leader"></div>
         <input type="text" id="player-name" class="name-input" placeholder="输入你的名字" maxlength="8">
         <button class="btn" onclick="startGame()">开始游戏</button>
         <div class="controls-hint">
@@ -372,7 +438,7 @@
         window.addEventListener('resize', resizeCanvas);
         
         // ===== 版本检测（解决 GitHub Pages CDN 缓存问题）=====
-        const APP_VERSION = '6';
+        const APP_VERSION = '7';
         const storedVersion = localStorage.getItem('catJumpVersion');
         
         function forceRefresh() {
@@ -778,11 +844,13 @@
                     leaderboardData.push({
                         name: data.name || '匿名',
                         score: data.score || 0,
+                        character: data.character || 'mingzhi',
                         date: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now()
                     });
                 });
                 firebaseReady = true;
                 renderLeaderboard();
+                updateCharLeader();
             }, (error) => {
                 console.warn('Firebase 连接失败，回退到本地:', error);
                 firebaseReady = false;
@@ -797,6 +865,7 @@
                 await firebaseDb.collection('scores').add({
                     name: name || '匿名',
                     score: score,
+                    character: selectedCharacter,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 return true;
@@ -812,7 +881,7 @@
             
             // 2. 同时更新本地（离线降级 + 个人历史记录）
             const board = getLocalLeaderboard();
-            board.push({ name: name || '匿名', score: score, date: Date.now() });
+            board.push({ name: name || '匿名', score: score, character: selectedCharacter, date: Date.now() });
             board.sort((a, b) => b.score - a.score);
             if (board.length > 20) board.length = 20;
             saveLocalLeaderboard(board);
@@ -823,6 +892,28 @@
                 renderLeaderboard();
             }
             // 云端就绪时，onSnapshot 会自动触发 renderLeaderboard
+        }
+        
+        function updateCharLeader() {
+            const leaderEl = document.getElementById('char-leader');
+            if (!leaderEl || !firebaseReady || leaderboardData.length === 0) return;
+            
+            let mingzhiBest = 0;
+            let bibiBest = 0;
+            leaderboardData.forEach(item => {
+                if (item.character === 'bibi' && item.score > bibiBest) bibiBest = item.score;
+                if (item.character !== 'bibi' && item.score > mingzhiBest) mingzhiBest = item.score;
+            });
+            
+            if (mingzhiBest > bibiBest) {
+                leaderEl.textContent = '🐱 明治领先！最高 ' + mingzhiBest + ' 分';
+            } else if (bibiBest > mingzhiBest) {
+                leaderEl.textContent = '🐶 比比领先！最高 ' + bibiBest + ' 分';
+            } else if (mingzhiBest > 0) {
+                leaderEl.textContent = '🐱🐶 平局！最高 ' + mingzhiBest + ' 分';
+            } else {
+                leaderEl.textContent = '';
+            }
         }
         
         function renderLeaderboard() {
@@ -846,13 +937,15 @@
             
             board.slice(0, 10).forEach((item, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+                const charIcon = item.character === 'bibi' ? '🐶' : '🐱';
                 html += `<div class="leaderboard-item">
                     <span class="rank">${medal}</span>
-                    <span class="name">${escapeHtml(item.name)}</span>
+                    <span class="name"><span class="char-icon">${charIcon}</span>${escapeHtml(item.name)}</span>
                     <span class="score">${item.score}</span>
                 </div>`;
             });
             container.innerHTML = html;
+            updateCharLeader();
         }
         
         function escapeHtml(text) {
@@ -1055,6 +1148,23 @@
         
         window.catImage = new Image();
         window.catImage.src = 'mingzhi.png?v=3';
+        window.bibiImage = new Image();
+        window.bibiImage.src = 'panbi.png';
+        
+        let selectedCharacter = localStorage.getItem('catJumpCharacter') || 'mingzhi';
+        
+        function selectCharacter(char) {
+            selectedCharacter = char;
+            localStorage.setItem('catJumpCharacter', char);
+            document.getElementById('char-mingzhi').classList.toggle('selected', char === 'mingzhi');
+            document.getElementById('char-bibi').classList.toggle('selected', char === 'bibi');
+        }
+        
+        // 初始化角色选择 UI
+        const savedChar = localStorage.getItem('catJumpCharacter');
+        if (savedChar) {
+            selectCharacter(savedChar);
+        }
         
         function roundRect(ctx, x, y, w, h, r) {
             if (typeof r === 'number') r = {tl: r, tr: r, br: r, bl: r};
@@ -1093,27 +1203,34 @@
             ctx.scale(scaleX, scaleY);
             ctx.translate(-cx, -cy);
             
-            if (window.catImage.complete && window.catImage.naturalWidth > 0) {
+            const isBibi = selectedCharacter === 'bibi';
+            const charImg = isBibi ? window.bibiImage : window.catImage;
+            const charImgSize = isBibi ? 55 : imgSize;
+            const charImgH = isBibi ? 71 : imgSize;
+            
+            if (charImg.complete && charImg.naturalWidth > 0) {
                 ctx.imageSmoothingEnabled = false;
                 // 阴影
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
                 ctx.beginPath();
-                ctx.ellipse(cx, cy + imgSize/2 - 2, imgSize * 0.35, imgSize * 0.1, 0, 0, Math.PI * 2);
+                ctx.ellipse(cx, cy + charImgH/2 - 2, charImgSize * 0.35, charImgSize * 0.1, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // 明治本体
-                ctx.drawImage(window.catImage, cx - imgSize/2, cy - imgSize/2 + 2, imgSize, imgSize);
-                // 眼睛高光闪烁
-                drawEyeSparkle(cx, cy);
-                // 偶尔眨眼（画一条线覆盖眼睛）
-                drawBlink(cx, cy);
+                // 角色本体
+                ctx.drawImage(charImg, cx - charImgSize/2, cy - charImgH/2 + 2, charImgSize, charImgH);
+                if (!isBibi) {
+                    // 眼睛高光闪烁（仅明治）
+                    drawEyeSparkle(cx, cy);
+                    // 偶尔眨眼（仅明治）
+                    drawBlink(cx, cy);
+                }
             } else {
-                ctx.fillStyle = '#FFAA55';
+                ctx.fillStyle = isBibi ? '#C4A77D' : '#FFAA55';
                 roundRect(ctx, cat.x, screenY, cat.width, cat.height, 10);
                 ctx.fill();
                 ctx.fillStyle = '#333';
                 ctx.font = 'bold 20px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('🐱', cat.x + cat.width/2, screenY + 30);
+                ctx.fillText(isBibi ? '🐶' : '🐱', cat.x + cat.width/2, screenY + 30);
             }
             
             ctx.restore();

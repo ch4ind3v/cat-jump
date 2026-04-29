@@ -432,6 +432,154 @@
         let cameraY = 0;
         let maxHeight = 0;
         
+        // ===== 音效系统 =====
+        let audioCtx = null;
+        let soundEnabled = true;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+        
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            
+            const now = audioCtx.currentTime;
+            
+            switch(type) {
+                case 'jump':
+                    // 跳跃：快速上升的方波
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(200, now);
+                        osc.frequency.exponentialRampToValueAtTime(500, now + 0.08);
+                        gain.gain.setValueAtTime(0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                        osc.start(now);
+                        osc.stop(now + 0.08);
+                    }
+                    break;
+                    
+                case 'spring':
+                    // 弹簧：更高更长的上升音
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(300, now);
+                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+                        gain.gain.setValueAtTime(0.1, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                        osc.start(now);
+                        osc.stop(now + 0.15);
+                    }
+                    break;
+                    
+                case 'land':
+                    // 落地：短促的打击音
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(150, now);
+                        osc.frequency.exponentialRampToValueAtTime(50, now + 0.05);
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        osc.start(now);
+                        osc.stop(now + 0.05);
+                    }
+                    break;
+                    
+                case 'break':
+                    // 碎裂平台：噪声爆发
+                    {
+                        const bufferSize = audioCtx.sampleRate * 0.1;
+                        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+                        }
+                        const noise = audioCtx.createBufferSource();
+                        const gain = audioCtx.createGain();
+                        noise.buffer = buffer;
+                        noise.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        gain.gain.setValueAtTime(0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                        noise.start(now);
+                        noise.stop(now + 0.1);
+                    }
+                    break;
+                    
+                case 'gameover':
+                    // 游戏结束：下降的音阶
+                    {
+                        const notes = [400, 350, 300, 200];
+                        notes.forEach((freq, i) => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.type = 'sawtooth';
+                            osc.frequency.setValueAtTime(freq, now + i * 0.12);
+                            gain.gain.setValueAtTime(0.06, now + i * 0.12);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.1);
+                            osc.start(now + i * 0.12);
+                            osc.stop(now + i * 0.12 + 0.1);
+                        });
+                    }
+                    break;
+                    
+                case 'revive':
+                    // 复活：华丽的上升音阶
+                    {
+                        const notes = [300, 400, 500, 700, 900];
+                        notes.forEach((freq, i) => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(freq, now + i * 0.08);
+                            gain.gain.setValueAtTime(0.08, now + i * 0.08);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.15);
+                            osc.start(now + i * 0.08);
+                            osc.stop(now + i * 0.08 + 0.15);
+                        });
+                    }
+                    break;
+                    
+                case 'coin':
+                    // 得分/金币：清脆的叮
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(1200, now);
+                        osc.frequency.exponentialRampToValueAtTime(1800, now + 0.05);
+                        gain.gain.setValueAtTime(0.06, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        osc.start(now);
+                        osc.stop(now + 0.05);
+                    }
+                    break;
+            }
+        }
+        
         // 排行榜系统
         let playerName = localStorage.getItem('catJumpPlayerName') || '';
         const nameInput = document.getElementById('player-name');
@@ -1082,9 +1230,11 @@
                         p.broken = true;
                         createParticles(p.x + p.width/2, p.y, '#FF6B35', 12);
                         cat.vy = cat.jumpPower * 0.7;
+                        playSound('break');
                     } else {
                         cat.y = p.y - cat.height;
                         cat.vy = cat.jumpPower;
+                        playSound('jump');
                         // 落地火花（太空风格：蓝色+橙色火花）
                         createParticles(cat.x + cat.width/2, cat.y + cat.height, '#00D4FF', 6);
                         createParticles(cat.x + cat.width/2, cat.y + cat.height, '#FF8C42', 4);
@@ -1115,6 +1265,7 @@
                     s.active = true;
                     s.compressTimer = 10;
                     createParticles(s.x + s.width/2, s.y, '#FFD700', 12);
+                    playSound('spring');
                 }
             });
         }
@@ -1181,6 +1332,7 @@
             if (currentHeight > score) {
                 score = currentHeight;
                 document.getElementById('score').textContent = score;
+                if (score % 10 === 0) playSound('coin');
             }
             
             generatePlatforms();
@@ -1437,6 +1589,7 @@
             initClouds();
             initStars();
             initSpaceships();
+            initAudio();
             
             gameState = 'playing';
             requestTiltPermission();
@@ -1444,6 +1597,7 @@
         
         function gameOver() {
             gameState = 'gameover';
+            playSound('gameover');
             
             if (score > highScore) {
                 highScore = score;
@@ -1514,6 +1668,8 @@
             cat.y = cat.y - 80;
             cat.vy = cat.jumpPower * 1.2; // 复活跳得更高一点
             cat.vx = 0;
+            
+            playSound('revive');
             
             // 复活特效：金色光环
             for (let i = 0; i < 20; i++) {

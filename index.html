@@ -238,7 +238,59 @@
             flex-wrap: wrap;
             justify-content: center;
         }
+        #mute-btn {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        #mute-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        #mute-btn:active {
+            transform: scale(0.95);
+        }
     </style>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7NOF3Db9VVD8SXApFQ1S8GVFoK0JLn1E",
+            authDomain: "cat-jump-leaderboard.firebaseapp.com",
+            projectId: "cat-jump-leaderboard",
+            storageBucket: "cat-jump-leaderboard.firebasestorage.app",
+            messagingSenderId: "410424187532",
+            appId: "1:410424187532:web:c89ad86d3e72daf05779a9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        window.firebaseQuery = query;
+        window.firebaseOrderBy = orderBy;
+        window.firebaseLimit = limit;
+        window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseServerTimestamp = serverTimestamp;
+    </script>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
@@ -247,6 +299,7 @@
         <div id="score">0</div>
         <div id="high-score">最高: 0</div>
     </div>
+    <button id="mute-btn" onclick="toggleSound()">🔊</button>
     
     <div id="start-screen">
         <h1>🚀 明治太空跳</h1>
@@ -466,12 +519,184 @@
             }
         }
         
+        // ===== 背景音乐系统（太空氛围） =====
+        let bgmMasterGain = null;
+        let bgmIntervalIds = [];
+        let bgmOscillators = [];
+        let bgmActive = false;
+        let padChordIndex = 0;
+        const padChords = [
+            [110, 130.8, 164.8],   // Am: A2, C3, E3
+            [174.6, 220, 261.6],   // F:  F3, A3, C4
+            [130.8, 164.8, 196],   // C:  C3, E3, G3
+            [196, 246.9, 293.7]    // G:  G3, B3, D4
+        ];
+        
+        function startBGM() {
+            if (!audioCtx) initAudio();
+            if (!soundEnabled || bgmActive) return;
+            bgmActive = true;
+            
+            // 创建主增益节点
+            bgmMasterGain = audioCtx.createGain();
+            bgmMasterGain.connect(audioCtx.destination);
+            bgmMasterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            bgmMasterGain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 2);
+            
+            startDroneLayer();
+            scheduleNextPad();
+            
+            const sparkleId = setInterval(playSparkle, 2000 + Math.random() * 2000);
+            bgmIntervalIds.push(sparkleId);
+        }
+        
+        function startDroneLayer() {
+            const droneConfig = [
+                { freq: 55,   type: 'sine',     vol: 0.5,  lfoRate: 0.08, lfoDepth: 4 },   // A1
+                { freq: 82.4, type: 'sine',     vol: 0.35, lfoRate: 0.12, lfoDepth: 6 },   // E2
+                { freq: 110,  type: 'triangle', vol: 0.2,  lfoRate: 0.15, lfoDepth: 3 }    // A2
+            ];
+            
+            droneConfig.forEach(cfg => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = cfg.type;
+                osc.frequency.setValueAtTime(cfg.freq, audioCtx.currentTime);
+                
+                // LFO 调制 detune，产生呼吸感
+                const lfo = audioCtx.createOscillator();
+                const lfoGain = audioCtx.createGain();
+                lfo.frequency.setValueAtTime(cfg.lfoRate, audioCtx.currentTime);
+                lfoGain.gain.setValueAtTime(cfg.lfoDepth, audioCtx.currentTime);
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.detune);
+                lfo.start();
+                bgmOscillators.push(lfo);
+                
+                gain.gain.setValueAtTime(cfg.vol, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(bgmMasterGain);
+                osc.start();
+                bgmOscillators.push(osc);
+            });
+        }
+        
+        function scheduleNextPad() {
+            if (!bgmActive) return;
+            playPadChord(padChords[padChordIndex]);
+            padChordIndex = (padChordIndex + 1) % padChords.length;
+            const timeoutId = setTimeout(scheduleNextPad, 7000 + Math.random() * 2000);
+            bgmIntervalIds.push(timeoutId);
+        }
+        
+        function playPadChord(freqs) {
+            if (!bgmActive || !bgmMasterGain) return;
+            const now = audioCtx.currentTime;
+            
+            freqs.forEach(freq => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+                
+                // 长 attack / release
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.06, now + 2);
+                gain.gain.linearRampToValueAtTime(0.04, now + 4);
+                gain.gain.linearRampToValueAtTime(0, now + 7);
+                
+                osc.connect(gain);
+                gain.connect(bgmMasterGain);
+                osc.start(now);
+                osc.stop(now + 7.5);
+                bgmOscillators.push(osc);
+            });
+        }
+        
+        function playSparkle() {
+            if (!bgmActive || !bgmMasterGain || Math.random() > 0.5) return;
+            const now = audioCtx.currentTime;
+            // 太空闪烁音：E5-B6 范围随机
+            const baseFreqs = [659.3, 783.9, 880, 1046.5, 1318.5, 1568];
+            const freq = baseFreqs[Math.floor(Math.random() * baseFreqs.length)];
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.025, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4 + Math.random() * 0.6);
+            osc.connect(gain);
+            gain.connect(bgmMasterGain);
+            osc.start(now);
+            osc.stop(now + 1.2);
+            bgmOscillators.push(osc);
+        }
+        
+        function fadeOutBGM() {
+            if (!bgmActive) return;
+            bgmActive = false;
+            
+            if (bgmMasterGain && audioCtx) {
+                try {
+                    bgmMasterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                    bgmMasterGain.gain.setValueAtTime(bgmMasterGain.gain.value, audioCtx.currentTime);
+                    bgmMasterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
+                } catch (e) {}
+            }
+            
+            bgmIntervalIds.forEach(id => clearTimeout(id));
+            bgmIntervalIds = [];
+            
+            setTimeout(() => {
+                bgmOscillators.forEach(osc => {
+                    try { osc.stop(); } catch(e) {}
+                });
+                bgmOscillators = [];
+                bgmMasterGain = null;
+            }, 1600);
+        }
+        
+        function stopBGM() {
+            if (!bgmActive && !bgmMasterGain) return;
+            bgmActive = false;
+            
+            bgmIntervalIds.forEach(id => clearTimeout(id));
+            bgmIntervalIds = [];
+            
+            bgmOscillators.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            bgmOscillators = [];
+            bgmMasterGain = null;
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('mute-btn');
+            if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+            
+            if (soundEnabled) {
+                initAudio();
+                if (gameState === 'menu' || gameState === 'playing') {
+                    startBGM();
+                }
+            } else {
+                stopBGM();
+            }
+        }
+        
         // 排行榜系统
         let playerName = localStorage.getItem('catJumpPlayerName') || '';
         const nameInput = document.getElementById('player-name');
         if (nameInput) nameInput.value = playerName;
         
-        function getLeaderboard() {
+        // ===== 云端排行榜系统（Firebase Firestore）=====
+        let leaderboardData = [];          // 当前缓存的云端排行榜
+        let leaderboardUnsubscribe = null; // onSnapshot 取消函数
+        let firebaseReady = false;         // 云端初始化完成标志
+        
+        function getLocalLeaderboard() {
             try {
                 return JSON.parse(localStorage.getItem('catJumpLeaderboard')) || [];
             } catch (e) {
@@ -479,31 +704,95 @@
             }
         }
         
-        function saveLeaderboard(data) {
+        function saveLocalLeaderboard(data) {
             localStorage.setItem('catJumpLeaderboard', JSON.stringify(data));
         }
         
-        function addScore(name, score) {
-            const board = getLeaderboard();
-            board.push({ name: name || '匿名', score: score, date: Date.now() });
-            board.sort((a, b) => b.score - a.score);
-            // 只保留前 20 条
-            if (board.length > 20) board.length = 20;
-            saveLeaderboard(board);
-            return board;
-        }
-        
-        function renderLeaderboard() {
-            const board = getLeaderboard();
-            const container = document.getElementById('leaderboard');
-            if (!container) return;
-            
-            if (board.length === 0) {
-                container.innerHTML = '<h3>🏆 排行榜</h3><p style="color:rgba(255,255,255,0.5);text-align:center;font-size:13px;">暂无记录</p>';
+        function initCloudLeaderboard() {
+            if (!window.firebaseDb) {
+                console.warn('Firebase 未加载，使用本地排行榜');
+                firebaseReady = false;
+                leaderboardData = getLocalLeaderboard();
+                renderLeaderboard();
                 return;
             }
             
-            let html = '<h3>🏆 排行榜</h3>';
+            const q = window.firebaseQuery(
+                window.firebaseCollection(window.firebaseDb, 'scores'),
+                window.firebaseOrderBy('score', 'desc'),
+                window.firebaseLimit(50)
+            );
+            
+            leaderboardUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
+                leaderboardData = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    leaderboardData.push({
+                        name: data.name || '匿名',
+                        score: data.score || 0,
+                        date: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now()
+                    });
+                });
+                firebaseReady = true;
+                renderLeaderboard();
+            }, (error) => {
+                console.warn('Firebase 连接失败，回退到本地:', error);
+                firebaseReady = false;
+                leaderboardData = getLocalLeaderboard();
+                renderLeaderboard();
+            });
+        }
+        
+        async function addScoreToCloud(name, score) {
+            if (!window.firebaseDb) return false;
+            try {
+                await window.firebaseAddDoc(
+                    window.firebaseCollection(window.firebaseDb, 'scores'),
+                    {
+                        name: name || '匿名',
+                        score: score,
+                        timestamp: window.firebaseServerTimestamp()
+                    }
+                );
+                return true;
+            } catch (e) {
+                console.warn('提交云端失败:', e);
+                return false;
+            }
+        }
+        
+        function addScore(name, score) {
+            // 1. 尝试提交到云端（异步，不阻塞）
+            addScoreToCloud(name, score);
+            
+            // 2. 同时更新本地（离线降级 + 个人历史记录）
+            const board = getLocalLeaderboard();
+            board.push({ name: name || '匿名', score: score, date: Date.now() });
+            board.sort((a, b) => b.score - a.score);
+            if (board.length > 20) board.length = 20;
+            saveLocalLeaderboard(board);
+            
+            // 3. 如果云端未就绪，用本地数据刷新 UI
+            if (!firebaseReady) {
+                leaderboardData = board;
+                renderLeaderboard();
+            }
+            // 云端就绪时，onSnapshot 会自动触发 renderLeaderboard
+        }
+        
+        function renderLeaderboard() {
+            const board = firebaseReady ? leaderboardData : getLocalLeaderboard();
+            const container = document.getElementById('leaderboard');
+            if (!container) return;
+            
+            let html = '<h3>🏆 排行榜' + (firebaseReady ? ' <span style="font-size:11px;color:#4CAF50">●</span>' : '') + '</h3>';
+            
+            if (board.length === 0) {
+                html += '<p style="color:rgba(255,255,255,0.5);text-align:center;font-size:13px;">暂无记录</p>';
+                container.innerHTML = html;
+                return;
+            }
+            
             board.slice(0, 10).forEach((item, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
                 html += `<div class="leaderboard-item">
@@ -1500,6 +1789,7 @@
             initStars();
             initSpaceships();
             initAudio();
+            startBGM();
             
             gameState = 'playing';
             requestTiltPermission();
@@ -1507,6 +1797,7 @@
         
         function gameOver() {
             gameState = 'gameover';
+            fadeOutBGM();
             playSound('gameover');
             
             if (score > highScore) {
@@ -1574,8 +1865,25 @@
         
         initClouds();
         initStars();
+        initCloudLeaderboard();
         draw();
         gameLoop();
+        
+        // 页面关闭时清理 Firebase 监听
+        window.addEventListener('beforeunload', () => {
+            if (leaderboardUnsubscribe) {
+                leaderboardUnsubscribe();
+                leaderboardUnsubscribe = null;
+            }
+        });
+        
+        // 尝试自动播放 BGM（可能被浏览器阻止，用户交互后会再次尝试）
+        if (soundEnabled) {
+            document.addEventListener('click', function tryStartBGM() {
+                startBGM();
+                document.removeEventListener('click', tryStartBGM);
+            }, { once: true });
+        }
     </script>
 </body>
 </html>

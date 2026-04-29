@@ -266,31 +266,8 @@
             transform: scale(0.95);
         }
     </style>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyC7NOF3Db9VVD8SXApFQ1S8GVFoK0JLn1E",
-            authDomain: "cat-jump-leaderboard.firebaseapp.com",
-            projectId: "cat-jump-leaderboard",
-            storageBucket: "cat-jump-leaderboard.firebasestorage.app",
-            messagingSenderId: "410424187532",
-            appId: "1:410424187532:web:c89ad86d3e72daf05779a9"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        window.firebaseDb = db;
-        window.firebaseCollection = collection;
-        window.firebaseAddDoc = addDoc;
-        window.firebaseQuery = query;
-        window.firebaseOrderBy = orderBy;
-        window.firebaseLimit = limit;
-        window.firebaseOnSnapshot = onSnapshot;
-        window.firebaseServerTimestamp = serverTimestamp;
-    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
@@ -370,6 +347,27 @@
         
         let cameraY = 0;
         let maxHeight = 0;
+        
+        // ===== Firebase 初始化（compat 模式，同步加载）=====
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7NOF3Db9VVD8SXApFQ1S8GVFoK0JLn1E",
+            authDomain: "cat-jump-leaderboard.firebaseapp.com",
+            projectId: "cat-jump-leaderboard",
+            storageBucket: "cat-jump-leaderboard.firebasestorage.app",
+            messagingSenderId: "410424187532",
+            appId: "1:410424187532:web:c89ad86d3e72daf05779a9"
+        };
+        
+        let firebaseDb = null;
+        try {
+            if (typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig);
+                firebaseDb = firebase.firestore();
+                console.log('Firebase 初始化成功');
+            }
+        } catch (e) {
+            console.warn('Firebase 初始化失败:', e);
+        }
         
         // ===== 音效系统 =====
         let audioCtx = null;
@@ -710,28 +708,19 @@
         }
         
         function initCloudLeaderboard() {
-            if (!window.firebaseDb) {
-                // Firebase 模块脚本可能还没加载完（deferred），延迟重试
-                firebaseRetryCount++;
-                if (firebaseRetryCount > 20) {
-                    console.warn('Firebase SDK 加载超时，使用本地排行榜');
-                    firebaseReady = false;
-                    leaderboardData = getLocalLeaderboard();
-                    renderLeaderboard();
-                    return;
-                }
-                console.log('Firebase SDK 尚未加载，等待中... (' + firebaseRetryCount + ')');
-                setTimeout(initCloudLeaderboard, 300);
+            if (!firebaseDb) {
+                console.warn('Firebase 未初始化，使用本地排行榜');
+                firebaseReady = false;
+                leaderboardData = getLocalLeaderboard();
+                renderLeaderboard();
                 return;
             }
             
-            const q = window.firebaseQuery(
-                window.firebaseCollection(window.firebaseDb, 'scores'),
-                window.firebaseOrderBy('score', 'desc'),
-                window.firebaseLimit(50)
-            );
+            const q = firebaseDb.collection('scores')
+                .orderBy('score', 'desc')
+                .limit(50);
             
-            leaderboardUnsubscribe = window.firebaseOnSnapshot(q, (snapshot) => {
+            leaderboardUnsubscribe = q.onSnapshot((snapshot) => {
                 leaderboardData = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -752,16 +741,13 @@
         }
         
         async function addScoreToCloud(name, score) {
-            if (!window.firebaseDb) return false;
+            if (!firebaseDb) return false;
             try {
-                await window.firebaseAddDoc(
-                    window.firebaseCollection(window.firebaseDb, 'scores'),
-                    {
-                        name: name || '匿名',
-                        score: score,
-                        timestamp: window.firebaseServerTimestamp()
-                    }
-                );
+                await firebaseDb.collection('scores').add({
+                    name: name || '匿名',
+                    score: score,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 return true;
             } catch (e) {
                 console.warn('提交云端失败:', e);

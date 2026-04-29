@@ -695,6 +695,7 @@
         let leaderboardData = [];          // 当前缓存的云端排行榜
         let leaderboardUnsubscribe = null; // onSnapshot 取消函数
         let firebaseReady = false;         // 云端初始化完成标志
+        let firebaseRetryCount = 0;        // Firebase 连接重试计数
         
         function getLocalLeaderboard() {
             try {
@@ -710,10 +711,17 @@
         
         function initCloudLeaderboard() {
             if (!window.firebaseDb) {
-                console.warn('Firebase 未加载，使用本地排行榜');
-                firebaseReady = false;
-                leaderboardData = getLocalLeaderboard();
-                renderLeaderboard();
+                // Firebase 模块脚本可能还没加载完（deferred），延迟重试
+                firebaseRetryCount++;
+                if (firebaseRetryCount > 20) {
+                    console.warn('Firebase SDK 加载超时，使用本地排行榜');
+                    firebaseReady = false;
+                    leaderboardData = getLocalLeaderboard();
+                    renderLeaderboard();
+                    return;
+                }
+                console.log('Firebase SDK 尚未加载，等待中... (' + firebaseRetryCount + ')');
+                setTimeout(initCloudLeaderboard, 300);
                 return;
             }
             

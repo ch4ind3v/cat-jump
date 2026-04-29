@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>超级明治跳 - Doodle Jump</title>
+    <title>这有山 - 明治跳跳</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
         
@@ -244,8 +244,8 @@
     </div>
     
     <div id="start-screen">
-        <h1>🐱 超级明治跳</h1>
-        <p>帮助明治跳得更高！</p>
+        <h1>🐱 这有山</h1>
+        <p>帮明治跳得更高！</p>
         <div id="challenge-banner" class="challenge-banner hidden"></div>
         <input type="text" id="player-name" class="name-input" placeholder="输入你的名字" maxlength="8">
         <button class="btn" onclick="startGame()">开始游戏</button>
@@ -348,8 +348,8 @@
             
             if (navigator.share) {
                 navigator.share({
-                    title: '超级明治跳挑战',
-                    text: `${name} 在超级明治跳中得了 ${score} 分！你能超过他吗？`,
+                    title: '这有山 - 明治跳跳挑战',
+                    text: `${name} 在这有山得了 ${score} 分！你能超过他吗？`,
                     url: shareUrl
                 }).catch(() => {});
             } else if (navigator.clipboard) {
